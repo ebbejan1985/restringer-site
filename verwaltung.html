@@ -272,6 +272,10 @@ function payDate(j) { return j.paidDate || j.doneDate || j.received; }
 
 // ---------- public files ----------
 function buildCSV() {
+  // Etiketten statt QR-Codes: es werden keine Besaitungsdaten mehr veröffentlicht.
+  return '# Restring-Service Niederrhein – keine öffentlichen Besaitungsdaten mehr (Etiketten statt QR-Codes).\n';
+}
+function buildCSVOld() {
   const latest = {};
   for (const j of DB.jobs) {
     if (j.status === 'angenommen' || !j.sticker) continue;
@@ -395,6 +399,7 @@ function jobRow(j, acts = true) {
   let buttons = '';
   if (acts) {
     if (j.status === 'angenommen') buttons += `<button class="btn sm p" data-act="done" data-id="${j.id}">Fertig besaitet</button>`;
+    if (j.status !== 'angenommen') buttons += `<button class="btn sm" data-act="label" data-id="${j.id}">Etikett</button>`;
     if (j.status === 'fertig') {
       const l = waLink(c.phone, `Hallo ${(c.name || '').split(' ')[0]}, dein Schläger (${r.model || ''}) ist fertig besaitet: ${setupText(j)}. Du kannst ihn abholen. Preis: ${eur(j.price)}.`);
       if (l) buttons += `<a class="btn sm" href="${esc(l)}" target="_blank" rel="noopener">WhatsApp: Fertig</a>`;
@@ -588,7 +593,7 @@ function jobDialog(job, preset = {}) {
       <label class="f"><span>Kunde</span><select id="j-cust">${custOpts}</select></label>
       <div class="grid2" id="j-newcust" hidden><label class="f"><span>Name</span><input id="j-cname" autocomplete="off"></label><label class="f"><span>WhatsApp</span><input id="j-cphone" inputmode="tel" autocomplete="off"></label></div>
       <label class="f"><span>Schläger</span><select id="j-rack"></select></label>
-      <div class="grid2" id="j-newrack" hidden><label class="f"><span>Modell</span><input id="j-rmodel" placeholder="z. B. Head Gravity MP" autocomplete="off"></label><label class="f"><span>Aufkleber-Nr.</span><input id="j-rsticker" inputmode="numeric" value="${nextSticker()}"></label><label class="f"><span>Besaitungsmuster</span><input id="j-rpattern" placeholder="16×19"></label></div>
+      <div class="grid2" id="j-newrack" hidden><label class="f"><span>Modell</span><input id="j-rmodel" placeholder="z. B. Head Gravity MP" autocomplete="off"></label><label class="f"><span>Schläger-Nr. (optional)</span><input id="j-rsticker" inputmode="numeric" value=""></label><label class="f"><span>Besaitungsmuster</span><input id="j-rpattern" placeholder="16×19"></label></div>
     </fieldset>
     <fieldset><legend>Besaitung</legend>
       <div id="j-last"></div>
@@ -605,7 +610,7 @@ function jobDialog(job, preset = {}) {
       <div class="grid2"><label class="chk"><input type="checkbox" id="j-paid" ${j.paid ? 'checked' : ''}> Bezahlt</label><label class="f"><span>Bezahlt am</span><input type="date" id="j-pd" value="${esc(j.paidDate)}"></label></div>
     </fieldset>
     <label class="f"><span>Notiz</span><textarea id="j-note">${esc(j.note)}</textarea></label>
-  </div><div class="df">${isNew ? '' : `<button type="button" class="btn d" id="j-del">Löschen</button><button type="button" class="btn" id="j-rcpt">Quittung</button>`}<div class="r"><button type="button" class="btn" data-close>Abbrechen</button><button class="btn p" type="submit">Speichern</button></div></div></form>`, f => saveJob(j, isNew));
+  </div><div class="df">${isNew ? '' : `<button type="button" class="btn d" id="j-del">Löschen</button><button type="button" class="btn" id="j-rcpt">Quittung</button><button type="button" class="btn" id="j-lbl">Etikett</button>`}<div class="r"><button type="button" class="btn" data-close>Abbrechen</button><button class="btn p" type="submit">Speichern</button></div></div></form>`, f => saveJob(j, isNew));
 
   const cust = $('#j-cust'), rack = $('#j-rack');
   function fillRacks() {
@@ -635,6 +640,7 @@ function jobDialog(job, preset = {}) {
   $$('input[name="j-st"]').forEach(r => r.onchange = () => { if (r.value !== 'angenommen' && !$('#j-done').value) $('#j-done').value = iso(); });
   if ($('#j-del')) $('#j-del').onclick = () => { if ($('#j-del').dataset.sure) { const i = DB.jobs.findIndex(x => x.id === j.id); if (i > -1) { const old = DB.jobs[i]; old.status = 'angenommen'; applyUsage(old); DB.jobs.splice(i, 1); } dlg.close(); commit('Auftrag gelöscht'); toast('Auftrag gelöscht'); } else { $('#j-del').dataset.sure = 1; $('#j-del').textContent = 'Wirklich löschen?'; } };
   if ($('#j-rcpt')) $('#j-rcpt').onclick = () => receipt(job);
+  if ($('#j-lbl')) $('#j-lbl').onclick = () => labelDialog(job);
   fillRacks();
   const q = preset.req;
   if (q) {
@@ -660,7 +666,7 @@ function saveJob(j, isNew) {
   if (!cid) return msg('Bitte einen Kunden wählen oder neu anlegen.');
   if (cid === '__new') { const name = $('#j-cname').value.trim(); if (!name) return msg('Bitte den Namen des neuen Kunden eintragen.'); const c = { id: uid(), name, phone: $('#j-cphone').value.trim(), note: '' }; DB.customers.push(c); cid = c.id; }
   let rid = $('#j-rack').value;
-  if (rid === '__new' || !rid) { const model = $('#j-rmodel').value.trim(); if (!model) return msg('Bitte das Schlägermodell eintragen.'); const st = pad3($('#j-rsticker').value); if (st && DB.rackets.some(r => r.sticker === st)) return msg(`Aufkleber Nr. ${st} ist schon vergeben.`); const r = { id: uid(), customerId: cid, model, sticker: st, pattern: $('#j-rpattern').value.trim(), note: '' }; DB.rackets.push(r); rid = r.id; }
+  if (rid === '__new' || !rid) { const model = $('#j-rmodel').value.trim(); if (!model) return msg('Bitte das Schlägermodell eintragen.'); const st = pad3($('#j-rsticker').value); if (st && DB.rackets.some(r => r.sticker === st)) return msg(`Schläger-Nr. ${st} ist schon vergeben.`); const r = { id: uid(), customerId: cid, model, sticker: st, pattern: $('#j-rpattern').value.trim(), note: '' }; DB.rackets.push(r); rid = r.id; }
   const mainId = $('#j-main').value; if (!mainId) return msg('Bitte die Saite längs wählen.');
   const hy = $('#j-hyb').checked; const crossId = hy ? $('#j-cross').value : ''; if (hy && !crossId) return msg('Bitte die Quersaite wählen.');
   if (strById(mainId).onlyCross) return msg(`${strName(mainId)} gibt es nur als Quersaite.`);
@@ -677,7 +683,7 @@ function saveJob(j, isNew) {
 }
 function quick(id, kind) {
   const j = DB.jobs.find(x => x.id === id); if (!j) return;
-  if (kind === 'done') { j.status = 'fertig'; j.doneDate = j.doneDate || iso(); applyUsage(j); toast('Fertig – Saite abgebucht'); }
+  if (kind === 'done') { j.status = 'fertig'; j.doneDate = j.doneDate || iso(); applyUsage(j); toast('Fertig – Saite abgebucht'); commit('Auftrag: done'); labelDialog(j); return; }
   if (kind === 'pickup') { j.status = 'abgeholt'; if (!j.paid) { j.paid = true; j.paidDate = iso(); j.payMethod = j.payMethod || 'Bar'; } toast('Abgeholt und bezahlt'); }
   if (kind === 'pay') { j.paid = true; j.paidDate = iso(); j.payMethod = j.payMethod || 'Bar'; toast('Als bezahlt markiert'); }
   commit('Auftrag: ' + kind);
@@ -700,10 +706,10 @@ function custDialog(c) {
   };
 }
 function rackDialog(r, custId) {
-  const isNew = !r; r = r || { id: uid(), customerId: custId, model: '', sticker: nextSticker(), pattern: '', note: '' };
+  const isNew = !r; r = r || { id: uid(), customerId: custId, model: '', sticker: '', pattern: '', note: '' };
   openDlg(`<form><div class="dh"><h2>${isNew ? 'Neuer Schläger' : 'Schläger bearbeiten'}</h2><button type="button" class="x" data-close aria-label="Schließen">×</button></div><div class="db">
     <label class="f"><span>Modell</span><input id="r-model" value="${esc(r.model)}" required></label>
-    <div class="grid2"><label class="f"><span>Aufkleber-Nr.</span><input id="r-st" inputmode="numeric" value="${esc(r.sticker)}"></label><label class="f"><span>Besaitungsmuster</span><input id="r-pat" value="${esc(r.pattern)}" placeholder="16×19"></label></div>
+    <div class="grid2"><label class="f"><span>Schläger-Nr. (optional)</span><input id="r-st" inputmode="numeric" value="${esc(r.sticker)}"></label><label class="f"><span>Besaitungsmuster</span><input id="r-pat" value="${esc(r.pattern)}" placeholder="16×19"></label></div>
     <label class="f"><span>Notiz (Gewicht, Balance, Griff …)</span><textarea id="r-note">${esc(r.note)}</textarea></label><div id="r-msg"></div></div>
     <div class="df"><div class="r"><button type="button" class="btn" data-close>Abbrechen</button><button class="btn p" type="submit">Speichern</button></div></div></form>`, () => {
     const st = pad3($('#r-st').value);
@@ -794,6 +800,47 @@ function expDialog(e) {
   });
   if ($('#e-del')) $('#e-del').onclick = () => { if (!$('#e-del').dataset.sure) { $('#e-del').dataset.sure = 1; $('#e-del').textContent = 'Wirklich löschen?'; return; } DB.expenses = DB.expenses.filter(x => x.id !== e.id); dlg.close(); commit('Ausgabe gelöscht'); };
 }
+// ---------- Etikett für den Phomemo P12 (12 mm Band, Thermodruck schwarz/weiß) ----------
+const shortName = n => { const w = String(n || '').split(' '); return w.length > 1 ? w.slice(1).join(' ') : n; };
+async function labelCanvas(j) {
+  try { await Promise.all(['800 10px "Saira Condensed"', '600 10px "Saira Condensed"'].map(f => document.fonts.load(f))); } catch (e) { }
+  const PX = 20, H = 12 * PX, pad = 1.2 * PX;              // 20 px pro mm, 12 mm hoch
+  const d = j.doneDate || iso(); const date = d.slice(8, 10) + '.' + d.slice(5, 7) + '.' + d.slice(2, 4);
+  const ten = isHybrid(j) || (j.tCross != null && j.tCross !== j.tMain) ? `${kg(j.tMain)}/${kg(j.tCross)} kg` : `${kg(j.tMain)} kg`;
+  const strs = isHybrid(j) ? `${shortName(strName(j.mainId))} / ${shortName(strName(j.crossId))}` : shortName(strName(j.mainId));
+  const L = [{ t: `${date} · ${ten}`, f: '800 74px "Saira Condensed", "Arial Narrow", sans-serif' }, { t: strs, f: '600 64px "Saira Condensed", "Arial Narrow", sans-serif' }, { t: 'Restring-Service · WhatsApp 0152 55357583', f: '600 40px "Saira Condensed", "Arial Narrow", sans-serif' }];
+  const c = document.createElement('canvas'), x = c.getContext('2d');
+  const badge = 9.6 * PX; let w = 0; L.forEach(l => { x.font = l.f; w = Math.max(w, x.measureText(l.t).width); });
+  c.width = Math.ceil(pad + badge + 0.9 * PX + w + pad); c.height = H;
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  // Monogramm-Block links
+  x.fillStyle = '#000'; const bx = pad, by = (H - badge) / 2; x.beginPath(); x.roundRect ? x.roundRect(bx, by, badge, badge, 18) : x.rect(bx, by, badge, badge); x.fill();
+  x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '800 92px "Saira Condensed", "Arial Narrow", sans-serif'; x.fillText('RS', bx + badge / 2, by + badge * .44);
+  x.font = '600 26px "Saira Condensed", "Arial Narrow", sans-serif'; x.fillText('RESTRING', bx + badge / 2, by + badge * .82);
+  // Text
+  x.fillStyle = '#000'; x.textAlign = 'left'; x.textBaseline = 'alphabetic'; const tx = bx + badge + 0.9 * PX;
+  const ys = [by + 66, by + 136, by + badge - 6];
+  L.forEach((l, i) => { x.font = l.f; x.fillText(l.t, tx, ys[i]); });
+  return c;
+}
+async function labelDialog(j) {
+  if (!j) return;
+  const c = await labelCanvas(j); const mm = Math.round(c.width / 20);
+  openDlg(`<div class="dh"><h2>Etikett</h2><button type="button" class="x" data-close aria-label="Schließen">×</button></div><div class="db">
+    <div style="background:#fff;border:1px dashed var(--line);border-radius:8px;padding:.6rem;overflow-x:auto"><img id="lbl-img" alt="Etikett-Vorschau" style="height:72px;max-width:none;display:block"></div>
+    <div class="note small">Für den Phomemo P12: 12 mm Band, Etikettlänge etwa <b>${mm} mm</b>. Tipp auf „An Druck-App senden“ und wähle die Phomemo-App, oder sichere das Bild und importiere es dort. Im Druckprogramm das Bild auf volle Bandhöhe stellen.</div></div>
+    <div class="df"><div class="r"><button type="button" class="btn" id="lbl-save">Bild sichern</button><button type="button" class="btn p" id="lbl-share">An Druck-App senden</button></div></div>`);
+  $('#lbl-img').src = c.toDataURL('image/png');
+  const name = 'etikett-' + (j.doneDate || iso()) + '.png';
+  const blob = () => new Promise(r => c.toBlob(r, 'image/png'));
+  $('#lbl-save').onclick = async () => { const b = await blob(); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800); };
+  $('#lbl-share').onclick = async () => {
+    const f = new File([await blob()], name, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: 'Etikett' }); } catch (e) { } }
+    else $('#lbl-save').click();
+  };
+}
+
 function receipt(j) {
   const c = custById(j.customerId) || {}, r = rackById(j.rackId) || {};
   const nr = 'Q-' + (payDate(j) || iso()).slice(0, 4) + '-' + j.id.slice(0, 6).toUpperCase();
@@ -827,7 +874,7 @@ document.addEventListener('click', e => {
     cust: () => location.hash = 'kunden:' + id,
     newcust: () => custDialog(), editcust: () => custDialog(custById(id)),
     newrack: () => rackDialog(null, t.dataset.cust), editrack: () => rackDialog(rackById(id)),
-    string: () => stringDialog(strById(id)), newstring: () => stringDialog(), reel: () => reelDialog(strById(id)), paste: () => pasteDialog(), setstock: () => stockDialog(strById(id)),
+    string: () => stringDialog(strById(id)), newstring: () => stringDialog(), reel: () => reelDialog(strById(id)), paste: () => pasteDialog(), label: () => labelDialog(DB.jobs.find(x => x.id === id)), setstock: () => stockDialog(strById(id)),
     newexp: () => expDialog(), exp: () => expDialog(DB.expenses.find(x => x.id === id)),
     csvin: () => { const y = String(YEAR); const rows = [['Datum', 'Kunde', 'Leistung', 'Betrag', 'Zahlart']].concat(DB.jobs.filter(j => j.paid && (payDate(j) || '').startsWith(y)).sort((a, b) => payDate(a).localeCompare(payDate(b))).map(j => [fmtD(payDate(j)), (custById(j.customerId) || {}).name || '', 'Besaitung ' + ((rackById(j.rackId) || {}).model || '') + ': ' + setupText(j), String(j.price).replace('.', ','), j.payMethod || ''])); download(`einnahmen-${y}.csv`, rows.map(r => r.map(csvCell).join(';')).join('\n'), 'text/csv'); },
     csvex: () => { const y = String(YEAR); const rows = [['Datum', 'Beschreibung', 'Kategorie', 'Betrag', 'Beleg']].concat(DB.expenses.filter(e => (e.date || '').startsWith(y)).sort((a, b) => a.date.localeCompare(b.date)).map(e => [fmtD(e.date), e.desc, e.cat, String(e.amount).replace('.', ','), e.receipt ? 'ja' : 'nein'])); download(`ausgaben-${y}.csv`, rows.map(r => r.map(csvCell).join(';')).join('\n'), 'text/csv'); },

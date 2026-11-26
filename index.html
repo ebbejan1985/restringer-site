@@ -372,7 +372,6 @@ body.personal h1 { font-size: clamp(2.2rem, 8vw, 3.6rem); }
         <div class="rgrid">
           <label class="rf"><span>Dein Vorname</span><input id="r-name" autocomplete="given-name" required></label>
           <label class="rf"><span>Schläger</span><input id="r-model" placeholder="z. B. Head Gravity MP" required></label>
-          <label class="rf"><span>Aufkleber-Nr. (falls vorhanden)</span><input id="r-sticker" inputmode="numeric" placeholder="z. B. 017"></label>
           <label class="rf"><span>Abgabe ab</span><input id="r-date" type="date"></label>
         </div>
         <div class="rgrid">
@@ -432,7 +431,7 @@ body.personal h1 { font-size: clamp(2.2rem, 8vw, 3.6rem); }
         <p>Diese Seite setzt keine Cookies, nutzt kein Tracking und lädt keine Inhalte von Drittanbietern. Schriftarten liegen auf demselben Server wie die Seite. Der Hosting-Anbieter speichert beim Aufruf technisch notwendige Daten (z. B. IP-Adresse, Zeitpunkt, Browser) in Server-Logfiles, um die Seite sicher auszuliefern (Art. 6 Abs. 1 lit. f DSGVO).</p>
         <p>Hosting: GitHub Inc., 88 Colin P. Kelly Jr. St., San Francisco, CA 94107, USA (GitHub Pages). Dabei können Daten in die USA übermittelt werden. GitHub nimmt am EU-US Data Privacy Framework teil; die Übermittlung stützt sich auf den Angemessenheitsbeschluss der EU-Kommission (Art. 45 DSGVO).</p>
         <h3>Kontaktaufnahme</h3>
-        <p>Wenn du mich per WhatsApp kontaktierst, verwende ich deine Angaben nur, um deinen Auftrag zu bearbeiten (Art. 6 Abs. 1 lit. b DSGVO). Für die Auftragsverwaltung speichere ich Name, WhatsApp-Nummer, Schläger und Besaitungsdaten in einem nicht öffentlichen Speicher bei GitHub (Anbieter siehe oben). Öffentlich auf dieser Seite erscheinen nur Aufklebernummer, Schläger, Saite, Spannung und Datum – ohne Namen. Bei WhatsApp gelten zusätzlich die Datenschutzbestimmungen von WhatsApp/Meta. Ich lösche deine Daten, wenn sie dafür nicht mehr gebraucht werden und keine gesetzlichen Aufbewahrungspflichten bestehen.</p>
+        <p>Wenn du mich per WhatsApp kontaktierst, verwende ich deine Angaben nur, um deinen Auftrag zu bearbeiten (Art. 6 Abs. 1 lit. b DSGVO). Für die Auftragsverwaltung speichere ich Name, WhatsApp-Nummer, Schläger und Besaitungsdaten in einem nicht öffentlichen Speicher bei GitHub (Anbieter siehe oben). Auf dieser Seite werden keine Kunden- oder Auftragsdaten veröffentlicht. Bei WhatsApp gelten zusätzlich die Datenschutzbestimmungen von WhatsApp/Meta. Ich lösche deine Daten, wenn sie dafür nicht mehr gebraucht werden und keine gesetzlichen Aufbewahrungspflichten bestehen.</p>
         <h3>Deine Rechte</h3>
         <p>Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Außerdem kannst du dich bei einer Datenschutz-Aufsichtsbehörde beschweren, in NRW bei der LDI NRW.</p>
       </details>
@@ -589,7 +588,6 @@ document.querySelectorAll('.copy').forEach(function (b) {
   $('r-hyb').addEventListener('change', function () { $('r-crossf').hidden = !this.checked; });
   $('r-advice').addEventListener('change', function () { $('r-tm').disabled = $('r-tc').disabled = this.checked; });
   window.reqPrefill = function (o) {
-    if (o.sticker) $('r-sticker').value = o.sticker;
     if (o.model) $('r-model').value = o.model;
     if (o.main && names.indexOf(o.main) > -1) $('r-main').value = o.main;
     if (o.cross && names.indexOf(o.cross) > -1) { $('r-hyb').checked = true; $('r-crossf').hidden = false; $('r-cross').value = o.cross; } else if (o.cross === '') { $('r-hyb').checked = false; $('r-crossf').hidden = true; }
@@ -611,7 +609,7 @@ document.querySelectorAll('.copy').forEach(function (b) {
     var hy = $('r-hyb').checked, main = $('r-main').value || 'Bitte beraten', cross = hy ? ($('r-cross').value || 'Bitte beraten') : '';
     var tm = $('r-tm').value.trim(), tc = $('r-tc').value.trim();
     var ten = $('r-advice').checked || !tm ? 'bitte beraten' : (tc && tc !== tm ? tm + '/' + tc : tm) + ' kg';
-    var d = $('r-date').value; var st = $('r-sticker').value.replace(/\D/g, '');
+    var d = $('r-date').value; var st = String(window.reqSticker || '').replace(/\D/g, '');
     var lines = ['Neue Besaitungsanfrage (restringer.de)', 'Name: ' + name, 'Schläger: ' + model];
     if (st) lines.push('Aufkleber-Nr.: ' + ('000' + parseInt(st, 10)).slice(-3));
     lines.push((hy ? 'Saite längs: ' : 'Saite: ') + main);
