@@ -118,6 +118,19 @@ h2 { font-family: var(--display); font-weight: 800; text-transform: uppercase; f
 .stock.ok { background: rgba(46, 160, 90, .18); }
 .stock.low { background: rgba(230, 160, 0, .26); }
 .stock.out { background: rgba(220, 60, 60, .22); }
+.req .sec-head { margin-bottom: 1rem; }
+.reqcard { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 1.3rem; display: grid; gap: 1rem; }
+.rgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; }
+.rf { display: grid; gap: .3rem; min-width: 0; }
+.rf > span { font-family: var(--mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.rf input, .rf select, .rf textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1.5px solid var(--line); border-radius: 10px; padding: .65rem .8rem; min-height: 2.9rem; }
+.rf input:focus, .rf select:focus, .rf textarea:focus { outline: 3px solid var(--main); outline-offset: 1px; }
+.rchk { display: flex; align-items: center; gap: .55rem; font-weight: 700; cursor: pointer; }
+.rchk input { width: 1.2rem; height: 1.2rem; accent-color: var(--court-2); }
+.rmsg { margin: 0; color: #c0392b; font-weight: 700; min-height: 0; }
+.reqcard .btn { justify-self: start; }
+.hy .askbtn { margin-top: .7rem; font: 700 .85rem var(--body); border: 1.5px solid var(--line); background: transparent; color: var(--ink); border-radius: 999px; padding: .4rem .9rem; cursor: pointer; }
+.hy .askbtn:hover { border-color: var(--ink); }
 .chip.k { background: var(--main); color: var(--on-main); }
 .sw { display: inline-block; width: .8rem; height: .8rem; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1.5px var(--surface), 0 0 0 2.6px var(--muted); margin-right: .5rem; vertical-align: -.05em; }
 @media (max-width: 760px) {
@@ -212,9 +225,9 @@ body.personal h1 { font-size: clamp(2.2rem, 8vw, 3.6rem); }
       <p class="claim">Frische Saiten, die passende Spannung und ehrliche Beratung.<span>Fertig in zwei bis drei Tagen.</span></p>
       <div class="price-tag"><b>22&nbsp;€</b><span>Endpreis für Saite + Arbeit,<br>egal welche Saite</span></div>
       <div class="cta">
-        <a class="btn btn-main" href="https://wa.me/4915255357583" target="_blank" rel="noopener">
+        <a class="btn btn-main" href="#anfrage">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 2.9 2.9 0 0 0-.9 2.2 5.1 5.1 0 0 0 1 2.7 11.6 11.6 0 0 0 4.5 4c1.7.7 2.3.8 3.2.7.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z"/></svg>
-          Per WhatsApp anfragen
+          Besaitung anfragen
         </a>
         <a class="btn btn-ghost" href="#saiten">Saiten ansehen</a>
       </div>
@@ -258,7 +271,7 @@ body.personal h1 { font-size: clamp(2.2rem, 8vw, 3.6rem); }
             </dl>
             <p class="age" id="f-age"></p>
             <div class="mine-actions">
-              <a class="btn btn-main" id="mine-wa" href="https://wa.me/4915255357583" target="_blank" rel="noopener">Wieder besaiten lassen</a>
+              <a class="btn btn-main" id="mine-wa" href="#anfrage">Wieder besaiten lassen</a>
               <a class="btn btn-ghost" href="#saiten">Andere Saite ansehen</a>
             </div>
           </div>
@@ -349,13 +362,42 @@ body.personal h1 { font-size: clamp(2.2rem, 8vw, 3.6rem); }
       </div>
     </section>
 
+    <section id="anfrage" class="req" aria-labelledby="h-anfrage">
+      <div class="sec-head">
+        <p class="kicker">In einer Minute</p>
+        <h2 id="h-anfrage">Besaitung anfragen</h2>
+        <p class="intro">Füll aus, was du weißt. Mit „Anfrage senden“ öffnet sich WhatsApp mit einer fertigen Nachricht an mich, du musst sie nur noch abschicken. Es wird nichts auf dieser Seite gespeichert.</p>
+      </div>
+      <form id="reqform" class="reqcard" novalidate>
+        <div class="rgrid">
+          <label class="rf"><span>Dein Vorname</span><input id="r-name" autocomplete="given-name" required></label>
+          <label class="rf"><span>Schläger</span><input id="r-model" placeholder="z. B. Head Gravity MP" required></label>
+          <label class="rf"><span>Aufkleber-Nr. (falls vorhanden)</span><input id="r-sticker" inputmode="numeric" placeholder="z. B. 017"></label>
+          <label class="rf"><span>Abgabe ab</span><input id="r-date" type="date"></label>
+        </div>
+        <div class="rgrid">
+          <label class="rf"><span>Saite (längs)</span><select id="r-main"></select></label>
+          <label class="rf" id="r-crossf" hidden><span>Quersaite</span><select id="r-cross"></select></label>
+        </div>
+        <label class="rchk"><input type="checkbox" id="r-hyb"> Hybrid: andere Saite quer</label>
+        <div class="rgrid">
+          <label class="rf"><span>Spannung längs (kg)</span><input id="r-tm" inputmode="decimal" placeholder="z. B. 23"></label>
+          <label class="rf"><span>Spannung quer (kg)</span><input id="r-tc" inputmode="decimal" placeholder="wie längs"></label>
+        </div>
+        <label class="rchk"><input type="checkbox" id="r-advice"> Spannung weiß ich nicht, bitte beraten</label>
+        <label class="rf"><span>Noch etwas? (optional)</span><textarea id="r-note" rows="2" placeholder="z. B. Spielniveau, Armprobleme, neues Griffband"></textarea></label>
+        <p class="rmsg" id="r-msg" role="alert"></p>
+        <button class="btn btn-main" type="submit">Anfrage per WhatsApp senden</button>
+      </form>
+    </section>
+
     <section aria-labelledby="h-ablauf">
       <div class="sec-head">
         <p class="kicker">In drei Schritten</p>
         <h2 id="h-ablauf">So läuft es ab</h2>
       </div>
       <ol class="steps">
-        <li><b>Anfragen</b><span>Schreib mir per WhatsApp, welche Saite und Spannung du möchtest. Wenn du unsicher bist, berate ich dich.</span></li>
+        <li><b>Anfragen</b><span>Füll das Anfrage-Formular aus oder schreib mir direkt per WhatsApp, welche Saite und Spannung du möchtest. Wenn du unsicher bist, berate ich dich.</span></li>
         <li><b>Vorbeibringen</b><span>Du bringst den Schläger nach Absprache bei mir in Neukirchen-Vluyn vorbei.</span></li>
         <li><b>Abholen</b><span>In der Regel ist er nach zwei bis drei Tagen fertig. Ich melde mich, sobald du ihn abholen kannst.</span></li>
       </ol>
@@ -487,8 +529,9 @@ fetch('bestand.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r
       age.innerHTML = 'Besaitet ' + when + '. Faustregel: so oft im Jahr neu besaiten, wie du pro Woche spielst.' + (poly ? ' Polyester-Saiten verlieren nach etwa drei Monaten spürbar an Spannung und Spin.' : '');
       if (poly && weeks >= 13) { age.classList.add('due'); age.innerHTML = 'Besaitet vor <b>' + weeks + ' Wochen</b>. Die Polyester-Saite hat inzwischen deutlich an Spannung verloren, Zeit für eine neue Besaitung.'; }
     } else { age.hidden = true; }
-    var msg = 'Hallo Jan, ich möchte meinen Schläger Nr. ' + nr + ' (' + (row[1] || 'Schläger') + ') wieder besaiten lassen.';
-    document.getElementById('mine-wa').href = 'https://wa.me/4915255357583?text=' + encodeURIComponent(msg);
+    document.getElementById('mine-wa').addEventListener('click', function () {
+      window.reqPrefill && window.reqPrefill({ sticker: nr, model: row[1] || '', main: (findString(row[2]) || {}).name || row[2], cross: hybrid ? ((findString(row[3]) || {}).name || row[3]) : '', tension: row[4] || '' });
+    });
   }).catch(function () {
     document.getElementById('mine-missing').hidden = false;
   });
@@ -533,6 +576,52 @@ document.querySelectorAll('.copy').forEach(function (b) {
     try { navigator.clipboard.writeText(t).then(done, fallback); } catch (e) { fallback(); }
   });
 });
+
+// ---- Anfrage-Formular: baut eine fertige WhatsApp-Nachricht ----
+(function () {
+  var f = document.getElementById('reqform'); if (!f) return;
+  var $ = function (id) { return document.getElementById(id); };
+  var names = [], crossOnly = [];
+  document.querySelectorAll('.str h4').forEach(function (h) { var n = h.childNodes[1] && h.childNodes[1].textContent.trim(); if (n && names.indexOf(n) < 0) { names.push(n); if (h.closest('.xfeat')) crossOnly.push(n); } });
+  function fill(sel, list, first) { sel.innerHTML = '<option value="">' + first + '</option>' + list.map(function (n) { return '<option>' + n.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</option>'; }).join(''); }
+  fill($('r-main'), names.filter(function (n) { return crossOnly.indexOf(n) < 0; }), 'Bitte beraten');
+  fill($('r-cross'), crossOnly.concat(names.filter(function (n) { return crossOnly.indexOf(n) < 0; })), 'Bitte beraten');
+  $('r-hyb').addEventListener('change', function () { $('r-crossf').hidden = !this.checked; });
+  $('r-advice').addEventListener('change', function () { $('r-tm').disabled = $('r-tc').disabled = this.checked; });
+  window.reqPrefill = function (o) {
+    if (o.sticker) $('r-sticker').value = o.sticker;
+    if (o.model) $('r-model').value = o.model;
+    if (o.main && names.indexOf(o.main) > -1) $('r-main').value = o.main;
+    if (o.cross && names.indexOf(o.cross) > -1) { $('r-hyb').checked = true; $('r-crossf').hidden = false; $('r-cross').value = o.cross; } else if (o.cross === '') { $('r-hyb').checked = false; $('r-crossf').hidden = true; }
+    var t = String(o.tension || '').match(/[\d.,]+/g); if (t) { $('r-tm').value = t[0]; $('r-tc').value = t[1] || ''; }
+    setTimeout(function () { $('r-name').focus({ preventScroll: true }); }, 400);
+  };
+  document.querySelectorAll('.hy').forEach(function (card) {
+    var parts = Array.prototype.map.call(card.querySelectorAll('.pair > div'), function (d) { return Array.prototype.filter.call(d.childNodes, function (n) { return n.nodeType === 3; }).map(function (n) { return n.textContent; }).join('').trim(); });
+    if (parts.length < 2) return;
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'askbtn'; b.textContent = 'Diese Kombination anfragen';
+    b.addEventListener('click', function () { window.reqPrefill({ main: parts[0], cross: parts[1] }); document.getElementById('anfrage').scrollIntoView({ behavior: 'smooth' }); });
+    card.querySelector('div:not(.pair)') && card.lastElementChild.appendChild(b);
+  });
+  f.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('r-name').value.trim(), model = $('r-model').value.trim(), msg = $('r-msg');
+    if (!name || !model) { msg.textContent = 'Bitte gib deinen Vornamen und deinen Schläger an.'; (name ? $('r-model') : $('r-name')).focus(); return; }
+    msg.textContent = '';
+    var hy = $('r-hyb').checked, main = $('r-main').value || 'Bitte beraten', cross = hy ? ($('r-cross').value || 'Bitte beraten') : '';
+    var tm = $('r-tm').value.trim(), tc = $('r-tc').value.trim();
+    var ten = $('r-advice').checked || !tm ? 'bitte beraten' : (tc && tc !== tm ? tm + '/' + tc : tm) + ' kg';
+    var d = $('r-date').value; var st = $('r-sticker').value.replace(/\D/g, '');
+    var lines = ['Neue Besaitungsanfrage (restringer.de)', 'Name: ' + name, 'Schläger: ' + model];
+    if (st) lines.push('Aufkleber-Nr.: ' + ('000' + parseInt(st, 10)).slice(-3));
+    lines.push((hy ? 'Saite längs: ' : 'Saite: ') + main);
+    if (hy) lines.push('Saite quer: ' + cross);
+    lines.push('Spannung: ' + ten);
+    if (d) lines.push('Abgabe ab: ' + d.split('-').reverse().join('.'));
+    var note = $('r-note').value.trim(); if (note) lines.push('Notiz: ' + note.replace(/\s*\n\s*/g, ' '));
+    window.location.href = 'https://wa.me/4915255357583?text=' + encodeURIComponent(lines.join('\n'));
+  });
+})();
 </script>
 
 </body>

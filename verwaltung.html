@@ -294,10 +294,10 @@ function buildStock() {
 }
 
 // Takes over stickers already listed in the public data.csv (before the Verwaltung existed).
+const strKey = t => String(t || '').toLowerCase().replace(/[\d.,]+\s*(mm)?/g, '').replace(/[^a-z]/g, '');
+function findStr(t) { const k = strKey(t); if (!k) return null; return DB.strings.find(s => strKey(s.name) === k) || DB.strings.find(s => strKey(s.name).includes(k) || k.includes(strKey(s.name))) || null; }
 function importPublicCSV(text) {
-  if (!text) return 0; let n = 0;
-  const key = t => String(t || '').toLowerCase().replace(/[\d.,]+\s*(mm)?/g, '').replace(/[^a-z]/g, '');
-  const find = t => { const k = key(t); if (!k) return null; return DB.strings.find(s => key(s.name) === k) || DB.strings.find(s => key(s.name).includes(k) || k.includes(key(s.name))); };
+  if (!text) return 0; let n = 0; const find = findStr;
   text.split(/\r?\n/).forEach(line => {
     if (!line.trim() || line.trim()[0] === '#') return;
     const c = line.split(';').map(x => x.trim()); if (!/^\d+$/.test(c[0])) return;
@@ -418,7 +418,8 @@ VIEWS.start = () => {
   const low = DB.strings.filter(s => s.active && ['low', 'out'].includes(stock(s)));
   const due = dueList();
   const sec = (title, items, empty, html) => `<section class="card"><div class="ch"><h2>${title}</h2><span class="chip">${items.length}</span></div>${items.length ? html : `<div class="empty">${empty}</div>`}</section>`;
-  return `<div class="head"><h1>Werkstatt</h1><span class="muted small">${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}</span></div>
+  return `<div class="head"><h1>Werkstatt</h1><button class="btn" data-act="paste">Anfrage einfügen</button></div>
+  <div class="muted small" style="margin-top:-.6rem">${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
   <div class="kpis">
     <div class="kpi"><small>In Arbeit</small><b>${open.length}</b></div>
     <div class="kpi"><small>Abholbereit</small><b>${ready.length}</b></div>
@@ -456,7 +457,7 @@ VIEWS.auftraege = () => {
     return [c.name, r.model, j.sticker, strName(j.mainId), strName(j.crossId), j.note].join(' ').toLowerCase().includes(q);
   }).sort((a, b) => (b.received || '').localeCompare(a.received || ''));
   const btn = (k, t) => `<button type="button" class="${JOBFILTER === k ? 'on' : ''}" data-act="jf" data-k="${k}">${t}</button>`;
-  return `<div class="head"><h1>Aufträge</h1><button class="btn p" data-act="newjob">+ Neuer Auftrag</button></div>
+  return `<div class="head"><h1>Aufträge</h1><div style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn" data-act="paste">Anfrage einfügen</button><button class="btn p" data-act="newjob">+ Neuer Auftrag</button></div></div>
   <div class="filters">${btn('offen', 'Offen')}${btn('angenommen', 'Angenommen')}${btn('fertig', 'Fertig')}${btn('unbezahlt', 'Unbezahlt')}${btn('alle', 'Alle')}</div>
   <input class="search" id="q" type="search" placeholder="Suchen: Kunde, Schläger, Nr., Saite …" value="${esc(QUERY)}" aria-label="Aufträge durchsuchen">
   <section class="card">${list.length ? `<ul class="rows">${list.map(j => jobRow(j)).join('')}</ul>` : '<div class="empty">Keine Aufträge in dieser Ansicht.</div>'}</section>`;
@@ -634,7 +635,24 @@ function jobDialog(job, preset = {}) {
   $$('input[name="j-st"]').forEach(r => r.onchange = () => { if (r.value !== 'angenommen' && !$('#j-done').value) $('#j-done').value = iso(); });
   if ($('#j-del')) $('#j-del').onclick = () => { if ($('#j-del').dataset.sure) { const i = DB.jobs.findIndex(x => x.id === j.id); if (i > -1) { const old = DB.jobs[i]; old.status = 'angenommen'; applyUsage(old); DB.jobs.splice(i, 1); } dlg.close(); commit('Auftrag gelöscht'); toast('Auftrag gelöscht'); } else { $('#j-del').dataset.sure = 1; $('#j-del').textContent = 'Wirklich löschen?'; } };
   if ($('#j-rcpt')) $('#j-rcpt').onclick = () => receipt(job);
-  fillRacks(); checkStock();
+  fillRacks();
+  const q = preset.req;
+  if (q) {
+    const r = q.sticker ? DB.rackets.find(x => x.sticker === pad3(q.sticker)) : null;
+    if (r) { j.rackId = r.id; cust.value = r.customerId; fillRacks(); rack.value = r.id; fillRackFields(); }
+    else {
+      const c = q.name ? DB.customers.find(x => x.name.toLowerCase() === q.name.toLowerCase()) : null;
+      if (c) cust.value = c.id; else { cust.value = '__new'; $('#j-cname').value = q.name || ''; $('#j-cphone').value = q.phone || ''; }
+      fillRacks(); rack.value = '__new'; fillRackFields(); $('#j-rmodel').value = q.model || '';
+      if (q.sticker && !DB.rackets.some(x => x.sticker === pad3(q.sticker))) $('#j-rsticker').value = pad3(q.sticker);
+    }
+    if (q.mainId) $('#j-main').value = q.mainId;
+    if (q.crossId) { $('#j-hyb').checked = true; $('#j-crossf').hidden = false; $('#j-cross').value = q.crossId; }
+    if (q.tMain != null) $('#j-tm').value = kg(q.tMain);
+    if (q.tCross != null) $('#j-tc').value = kg(q.tCross);
+    if (q.note) $('#j-note').value = q.note;
+  }
+  checkStock();
 }
 function saveJob(j, isNew) {
   const msg = t => { $('#j-stock').innerHTML = `<div class="note bad">${esc(t)}</div>`; };
@@ -724,6 +742,27 @@ function reelDialog(s) {
     dlg.close(); commit('Rolle hinzugefügt'); toast(`${kg(m)} m ${s.name} hinzugefügt`);
   });
 }
+// Turns a pasted WhatsApp request (from the form on the website) into a prefilled job.
+function parseRequest(t) {
+  const get = k => { const m = t.match(new RegExp('^[^\\wäöüÄÖÜ]*(?:' + k + ')\\s*:\\s*(.+)$', 'im')); return m ? m[1].trim() : ''; };
+  const main = get('Saite längs|Saite'), cross = get('Saite quer');
+  const ten = get('Spannung').match(/\d+(?:[.,]\d+)?/g) || [];
+  const ms = findStr(main), cs = cross ? findStr(cross) : null;
+  const note = [get('Abgabe ab') && 'Abgabe ab ' + get('Abgabe ab'), get('Notiz'), main && !ms ? 'Saite: ' + main : '', cross && !cs ? 'Quersaite: ' + cross : '', !ten.length && get('Spannung') ? 'Spannung: ' + get('Spannung') : ''].filter(Boolean).join(' · ');
+  return { name: get('Name'), model: get('Schläger'), sticker: (get('Aufkleber-Nr\\.?') || '').replace(/\D/g, ''), mainId: ms && !ms.onlyCross ? ms.id : '', crossId: cs ? cs.id : '', tMain: num(ten[0]), tCross: num(ten[1] ?? ten[0]), note };
+}
+function pasteDialog() {
+  openDlg(`<form><div class="dh"><h2>Anfrage einfügen</h2><button type="button" class="x" data-close aria-label="Schließen">×</button></div><div class="db">
+    <p class="muted small" style="margin:0">In WhatsApp die Anfrage lange drücken, „Kopieren“ wählen und hier einfügen. Daraus wird ein Auftrag, den du vor dem Speichern noch prüfen kannst.</p>
+    <label class="f"><span>Nachricht</span><textarea id="p-text" rows="8" placeholder="Neue Besaitungsanfrage (restringer.de)&#10;Name: …&#10;Schläger: …"></textarea></label>
+    <label class="f"><span>WhatsApp-Nummer des Absenders (für neue Kunden)</span><input id="p-phone" inputmode="tel" placeholder="z. B. 0151 …"></label><div id="p-msg"></div></div>
+    <div class="df"><div class="r"><button type="button" class="btn" data-close>Abbrechen</button><button class="btn p" type="submit">Auftrag daraus machen</button></div></div></form>`, () => {
+    const t = $('#p-text').value; const q = parseRequest(t);
+    if (!q.name && !q.model && !q.sticker) { $('#p-msg').innerHTML = '<div class="note bad">In der Nachricht stehen weder Name noch Schläger. Bitte die komplette Anfrage einfügen.</div>'; return; }
+    q.phone = $('#p-phone').value.trim(); dlg.close(); jobDialog(null, { req: q });
+  });
+  $('#p-text').focus();
+}
 function stockDialog(s) {
   openDlg(`<form><div class="dh"><h2>Bestand eintragen</h2><button type="button" class="x" data-close aria-label="Schließen">×</button></div><div class="db">
     <div class="note"><i class="sw" style="--c:${esc(s.color)}"></i><b>${esc(s.name)}</b> · bisher ${s.meters == null ? 'nicht eingetragen' : kg(s.meters) + ' m'}</div>
@@ -788,7 +827,7 @@ document.addEventListener('click', e => {
     cust: () => location.hash = 'kunden:' + id,
     newcust: () => custDialog(), editcust: () => custDialog(custById(id)),
     newrack: () => rackDialog(null, t.dataset.cust), editrack: () => rackDialog(rackById(id)),
-    string: () => stringDialog(strById(id)), newstring: () => stringDialog(), reel: () => reelDialog(strById(id)), setstock: () => stockDialog(strById(id)),
+    string: () => stringDialog(strById(id)), newstring: () => stringDialog(), reel: () => reelDialog(strById(id)), paste: () => pasteDialog(), setstock: () => stockDialog(strById(id)),
     newexp: () => expDialog(), exp: () => expDialog(DB.expenses.find(x => x.id === id)),
     csvin: () => { const y = String(YEAR); const rows = [['Datum', 'Kunde', 'Leistung', 'Betrag', 'Zahlart']].concat(DB.jobs.filter(j => j.paid && (payDate(j) || '').startsWith(y)).sort((a, b) => payDate(a).localeCompare(payDate(b))).map(j => [fmtD(payDate(j)), (custById(j.customerId) || {}).name || '', 'Besaitung ' + ((rackById(j.rackId) || {}).model || '') + ': ' + setupText(j), String(j.price).replace('.', ','), j.payMethod || ''])); download(`einnahmen-${y}.csv`, rows.map(r => r.map(csvCell).join(';')).join('\n'), 'text/csv'); },
     csvex: () => { const y = String(YEAR); const rows = [['Datum', 'Beschreibung', 'Kategorie', 'Betrag', 'Beleg']].concat(DB.expenses.filter(e => (e.date || '').startsWith(y)).sort((a, b) => a.date.localeCompare(b.date)).map(e => [fmtD(e.date), e.desc, e.cat, String(e.amount).replace('.', ','), e.receipt ? 'ja' : 'nein'])); download(`ausgaben-${y}.csv`, rows.map(r => r.map(csvCell).join(';')).join('\n'), 'text/csv'); },
