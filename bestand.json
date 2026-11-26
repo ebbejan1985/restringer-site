@@ -33,6 +33,7 @@
     "Armschonend"
    ],
    "pos": 0,
+   "y": 0,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -54,6 +55,7 @@
     "Armschonend"
    ],
    "pos": 0,
+   "y": 10,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -75,6 +77,7 @@
     "Hält Spannung"
    ],
    "pos": 8,
+   "y": 55,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -96,6 +99,7 @@
     "Einsteiger"
    ],
    "pos": 18,
+   "y": 25,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -117,6 +121,7 @@
     "Lebendig"
    ],
    "pos": 28,
+   "y": 65,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -138,6 +143,7 @@
     "Lebendig"
    ],
    "pos": 28,
+   "y": 65,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -159,6 +165,7 @@
     "Hält Spannung"
    ],
    "pos": 42,
+   "y": 75,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -180,6 +187,7 @@
     "Snapback"
    ],
    "pos": 48,
+   "y": 70,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -201,6 +209,7 @@
     "Nur Hybrid"
    ],
    "pos": 50,
+   "y": 45,
    "onlyCross": true,
    "hset": false,
    "a": "",
@@ -222,6 +231,7 @@
     "Tauschbar"
    ],
    "pos": 50,
+   "y": 85,
    "onlyCross": false,
    "hset": true,
    "a": "Confidential",
@@ -243,6 +253,7 @@
     "Tauschbar"
    ],
    "pos": 50,
+   "y": 62,
    "onlyCross": false,
    "hset": true,
    "a": "Hyper-G Round",
@@ -260,6 +271,7 @@
    "desc": "",
    "chips": [],
    "pos": 50,
+   "y": 50,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -281,6 +293,7 @@
     "Kontrolle"
    ],
    "pos": 55,
+   "y": 70,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -302,6 +315,7 @@
     "Schnelle Schwünge"
    ],
    "pos": 62,
+   "y": 80,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -323,6 +337,7 @@
     "Haltbar"
    ],
    "pos": 72,
+   "y": 75,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -344,6 +359,7 @@
     "Präzision"
    ],
    "pos": 80,
+   "y": 85,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -365,6 +381,7 @@
     "Haltbar"
    ],
    "pos": 86,
+   "y": 85,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -386,6 +403,7 @@
     "Hält Spannung"
    ],
    "pos": 93,
+   "y": 92,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -407,6 +425,7 @@
     "Spin"
    ],
    "pos": 100,
+   "y": 88,
    "onlyCross": false,
    "hset": false,
    "a": "",
@@ -428,6 +447,7 @@
     "Spin"
    ],
    "pos": 100,
+   "y": 25,
    "onlyCross": false,
    "hset": false,
    "a": "",
