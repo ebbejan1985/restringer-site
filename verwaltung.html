@@ -804,7 +804,7 @@ function stringDialog(s) {
       <label class="f"><span>Eigenschaften (bis zu 3, mit Komma; die erste wird hervorgehoben)</span><input id="s-chips" value="${esc((s.chips || []).join(', '))}" placeholder="Spin, Kontrolle, Komfort"></label>
       <label class="f"><span>Einordnung: mehr Power ← → mehr Kontrolle</span><input type="range" id="s-pos" min="0" max="100" step="1" value="${s.pos ?? 50}" style="min-height:auto;padding:0"></label>
       <label class="f"><span>Gefühl: komfortabel ← → knackig</span><input type="range" id="s-firm" min="0" max="100" step="1" value="${s.firm ?? 50}" style="min-height:auto;padding:0"></label>
-      <label class="f"><span>Spin: wenig ← → viel (Punktgröße auf der Karte)</span><input type="range" id="s-spin" min="0" max="100" step="1" value="${s.spin ?? 50}" style="min-height:auto;padding:0"></label>
+      <label class="f"><span>Spin: wenig ← → viel (Spin-Karte)</span><input type="range" id="s-spin" min="0" max="100" step="1" value="${s.spin ?? 50}" style="min-height:auto;padding:0"></label>
     </fieldset>
     <label class="chk"><input type="checkbox" id="s-oc" ${s.onlyCross ? 'checked' : ''}> Nur als Quersaite im Hybrid</label>
     <label class="chk"><input type="checkbox" id="s-hset" ${s.hset ? 'checked' : ''}> Fertiges Hybrid-Set (zwei Saiten in einer Packung, längs/quer tauschbar)</label>

@@ -121,8 +121,19 @@ h2 { font-family: var(--display); font-weight: 800; text-transform: uppercase; f
 .smap-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .2rem 1rem; margin-bottom: .4rem; }
 .smap-head h3 { font-family: var(--display); font-weight: 800; font-size: 1.5rem; text-transform: uppercase; margin: 0; letter-spacing: .02em; }
 .smap-head p { margin: 0; color: var(--muted); font-size: .92rem; }
-.smap-box { width: 100%; }
-.smap-box svg { display: block; max-width: 100%; height: auto; }
+.smaps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem; }
+.smap-box { min-width: 0; }
+.smap-t { font-family: var(--mono); font-weight: 500; font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: .4rem 0 .2rem; }
+.smap-svg svg { display: block; max-width: 100%; height: auto; }
+.smap-tabs { display: none; gap: .3rem; background: var(--chip); padding: .25rem; border-radius: 999px; width: max-content; margin: .3rem 0 .5rem; }
+.smap-tabs button { font: 700 .9rem var(--body); color: var(--ink); background: transparent; border: 0; border-radius: 999px; padding: .4rem 1.1rem; cursor: pointer; }
+.smap-tabs button.on { background: var(--surface); box-shadow: 0 1px 3px rgba(10, 16, 34, .18); }
+@media (max-width: 860px) {
+  .smaps { grid-template-columns: 1fr; }
+  .smap-tabs { display: flex; }
+  .smap-box:not(.on) { display: none; }
+  .smap-t { display: none; }
+}
 .q-bg { fill: var(--chip); }
 .q-axis { stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 4 4; }
 .q-lab { fill: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
@@ -135,11 +146,7 @@ h2 { font-family: var(--display); font-weight: 800; text-transform: uppercase; f
 .lg-dot { display: inline-block; width: .8rem; height: .8rem; border-radius: 50%; background: var(--muted); margin-right: .35rem; vertical-align: -.1em; }
 .lg-set { background: radial-gradient(circle, var(--cross) 0 35%, var(--muted) 36%); }
 .lg-x { background: transparent; border: 1.5px dashed var(--ink); }
-.lg-spin .lg-dot { margin-right: .2rem; vertical-align: middle; }
-.lg-s1 { width: .45rem; height: .45rem; }
-.lg-s2 { width: .75rem; height: .75rem; }
-.lg-s3 { width: 1.1rem; height: 1.1rem; margin-right: .45rem !important; }
-.pt .dot { fill-opacity: .9; }
+
 .str.flash { animation: flash 1.6s ease-out; }
 @keyframes flash { 0% { background: rgba(217, 242, 75, .55); } 100% { background: transparent; } }
 .stock.ok { background: rgba(46, 160, 90, .18); }
@@ -520,69 +527,82 @@ fetch('bestand.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r
   drawMap(cat.filter(function (x) { return x.firm != null; }), slug, col);
 }).catch(function () {});
 
-// ---- Saiten-Karte: Power ↔ Kontrolle (x), Komfort ↔ Spin (y) ----
+// ---- Saiten-Karten: Power ↔ Kontrolle (x) × Gefühl bzw. Spin (y) ----
 function drawMap(items, slug, col) {
   if (!items.length) return;
+  var MAPS = { firm: { title: 'Gefühl', top: '↑ knackig', bottom: '↓ komfortabel', aria: 'komfortabel bis knackig' }, spin: { title: 'Spin', top: '↑ viel Spin', bottom: '↓ wenig Spin', aria: 'wenig bis viel Spin' } };
   var host = document.getElementById('smap');
   if (!host) {
     host = document.createElement('div'); host.id = 'smap'; host.className = 'smap';
-    host.innerHTML = '<div class="smap-head"><h3>Saiten-Karte</h3><p>Wo liegt welche Saite? Tippe auf einen Punkt für die Beschreibung.</p></div><div class="smap-box"></div>' +
-      '<div class="smap-legend"><span class="lg-spin"><i class="lg-dot lg-s1"></i><i class="lg-dot lg-s2"></i><i class="lg-dot lg-s3"></i>Punktgröße = Spin</span><span><i class="lg-dot lg-set"></i>Hybrid-Set</span><span><i class="lg-dot lg-x"></i>nur Quersaite</span></div>';
+    host.innerHTML = '<div class="smap-head"><h3>Saiten-Karten</h3><p>Wo liegt welche Saite? Tippe auf einen Punkt für die Beschreibung.</p></div>' +
+      '<div class="smap-tabs" role="tablist"><button type="button" role="tab" data-k="firm" class="on" aria-selected="true">Gefühl</button><button type="button" role="tab" data-k="spin" aria-selected="false">Spin</button></div>' +
+      '<div class="smaps"><div class="smap-box on" data-k="firm"><h4 class="smap-t">Gefühl</h4><div class="smap-svg"></div></div><div class="smap-box" data-k="spin"><h4 class="smap-t">Spin</h4><div class="smap-svg"></div></div></div>' +
+      '<div class="smap-legend"><span><i class="lg-dot"></i>Saite</span><span><i class="lg-dot lg-set"></i>Hybrid-Set</span><span><i class="lg-dot lg-x"></i>nur Quersaite</span></div>';
     var g = document.querySelector('#saiten .groups'); g.parentNode.insertBefore(host, g);
   }
-  var box = host.querySelector('.smap-box'), NS = 'http://www.w3.org/2000/svg';
-  function render() {
-    var W = Math.max(300, box.clientWidth), H = Math.round(W < 560 ? W * 1.15 : Math.min(Math.max(W * 0.7, 360), 560));
-    var m = { l: 22, r: 22, t: 30, b: 30 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
-    var fs = W < 480 ? 11 : 12.5;
-    var px = Math.min(70, iw * 0.08), py = Math.min(34, ih * 0.07);
+  var NS = 'http://www.w3.org/2000/svg';
+  function render(boxEl) {
+    var key = boxEl.dataset.k, cfg = MAPS[key], box = boxEl.querySelector('.smap-svg');
+    if (!box.clientWidth) return;
+    var W = Math.max(280, box.clientWidth), H = Math.round(W < 560 ? W * 1.1 : Math.min(W * 0.9, 520));
+    var m = { l: 4, r: 4, t: 26, b: 6 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    var fs = W < 480 ? 11 : 12;
+    var px = Math.min(56, iw * 0.08), py = Math.min(30, ih * 0.07);
     var X = function (v) { return m.l + px + (Math.max(0, Math.min(100, v)) / 100) * (iw - 2 * px); };
     var Yp = function (v) { return m.t + py + (1 - Math.max(0, Math.min(100, v)) / 100) * (ih - 2 * py); };
     var svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', 'Saiten-Karte: waagerecht Power bis Kontrolle, senkrecht komfortabel bis knackig, Punktgröße zeigt den Spin');
+    svg.setAttribute('aria-label', 'Saiten-Karte ' + cfg.title + ': waagerecht Power bis Kontrolle, senkrecht ' + cfg.aria);
     function el(t, a, txt) { var e = document.createElementNS(NS, t); for (var k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; svg.appendChild(e); return e; }
-    // quadrants + axes
     el('rect', { x: m.l, y: m.t, width: iw, height: ih, rx: 10, class: 'q-bg' });
     el('line', { x1: X(50), y1: m.t, x2: X(50), y2: m.t + ih, class: 'q-axis' });
     el('line', { x1: m.l, y1: Yp(50), x2: m.l + iw, y2: Yp(50), class: 'q-axis' });
-    el('text', { x: m.l, y: m.t - 10, class: 'q-lab', 'text-anchor': 'start' }, '← Power');
-    el('text', { x: m.l + iw, y: m.t - 10, class: 'q-lab', 'text-anchor': 'end' }, 'Kontrolle →');
-    el('text', { x: X(50) + 6, y: m.t + 14, class: 'q-lab q-y' }, '↑ knackig');
-    el('text', { x: X(50) + 6, y: m.t + ih - 8, class: 'q-lab q-y' }, '↓ komfortabel');
-    var placed = [], ptsInfo = [];
-    // points first (big spin dots underneath), labels after (with simple collision avoidance)
-    items.slice().sort(function (a, b) { return (+b.spin || 0) - (+a.spin || 0); }).forEach(function (it) {
-      var sp = Math.max(0, Math.min(100, +it.spin || 0)), cx = X(+it.pos || 0), cy = Yp(+it.firm || 0), r = (W < 480 ? 3.5 : 4.5) + sp / 100 * (W < 480 ? 8 : 10);
+    el('text', { x: m.l, y: m.t - 9, class: 'q-lab', 'text-anchor': 'start' }, '← Power');
+    el('text', { x: m.l + iw, y: m.t - 9, class: 'q-lab', 'text-anchor': 'end' }, 'Kontrolle →');
+    el('text', { x: X(50) + 6, y: m.t + 14, class: 'q-lab q-y' }, cfg.top);
+    el('text', { x: X(50) + 6, y: m.t + ih - 8, class: 'q-lab q-y' }, cfg.bottom);
+    var placed = [], pts = [], r = W < 480 ? 6.5 : 7.5;
+    // y relativ zum Sortiment strecken, damit sich Saiten mit ähnlichen Werten nicht stapeln
+    var vals = items.map(function (x) { return +x[key] || 0; }), lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    var ny = function (v) { return hi > lo ? (v - lo) / (hi - lo) * 100 : 50; };
+    items.forEach(function (it) {
+      var cx = X(+it.pos || 0), cy = Yp(ny(+it[key] || 0));
       var a = el('a', { href: '#' + slug(it.name), class: 'pt' });
-      var t = document.createElementNS(NS, 'title'); t.textContent = it.name + ' · Spin ' + Math.round(sp / 20) + '/5'; a.appendChild(t);
+      var t = document.createElementNS(NS, 'title'); t.textContent = it.name; a.appendChild(t);
       function c(attrs) { var e = document.createElementNS(NS, 'circle'); for (var k in attrs) e.setAttribute(k, attrs[k]); a.appendChild(e); }
       if (it.hset) { c({ cx: cx, cy: cy, r: r + 1, fill: col(it.ac), class: 'dot' }); c({ cx: cx, cy: cy, r: r * 0.5, fill: col(it.bc) }); }
-      else if (it.onlyCross) c({ cx: cx, cy: cy, r: r, fill: col(it.color), class: 'dot dot-x' });
-      else c({ cx: cx, cy: cy, r: r, fill: col(it.color), class: 'dot' });
+      else c({ cx: cx, cy: cy, r: r, fill: col(it.color), class: it.onlyCross ? 'dot dot-x' : 'dot' });
       placed.push({ x: cx - r - 1, y: cy - r - 1, w: 2 * r + 2, h: 2 * r + 2 });
-      ptsInfo.push({ it: it, cx: cx, cy: cy, r: r, a: a });
+      pts.push({ it: it, cx: cx, cy: cy, a: a });
     });
-    var ctx = document.createElement('canvas').getContext('2d'); ctx.font = '600 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-    var hit = function (b) { return placed.some(function (p) { return b.x < p.x + p.w && b.x + b.w > p.x && b.y < p.y + p.h && b.y + b.h > p.y; }) || b.x < 2 || b.x + b.w > W - 2 || b.y < m.t || b.y + b.h > m.t + ih; };
-    ptsInfo.forEach(function (p) {
+    var ctx = document.createElement('canvas').getContext('2d'); ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+    var hit = function (b) { return placed.some(function (p) { return b.x < p.x + p.w && b.x + b.w > p.x && b.y < p.y + p.h && b.y + b.h > p.y; }) || b.x < m.l + 2 || b.x + b.w > W - 2 || b.y < m.t || b.y + b.h > m.t + ih; };
+    pts.forEach(function (p) {
       var label = p.it.name.split(' ').slice(1).join(' ').replace(/\s*\(Hybrid-Set\)/, '') || p.it.name;
-      var w = ctx.measureText(label).width + 4, h = fs + 3, g = p.r + 4;
+      var w = ctx.measureText(label).width + 4, h = fs + 3, g = r + 4;
       var opts = [{ x: p.cx + g, y: p.cy - h / 2, a: 'start' }, { x: p.cx - g - w, y: p.cy - h / 2, a: 'end' }, { x: p.cx - w / 2, y: p.cy - g - h, a: 'middle' }, { x: p.cx - w / 2, y: p.cy + g, a: 'middle' },
         { x: p.cx + g, y: p.cy - h - 2, a: 'start' }, { x: p.cx + g, y: p.cy + 2, a: 'start' }, { x: p.cx - g - w, y: p.cy - h - 2, a: 'end' }, { x: p.cx - g - w, y: p.cy + 2, a: 'end' }];
       for (var i = 0; i < opts.length; i++) {
-        var o = opts[i], b = { x: o.x, y: o.y, w: w, h: h };
-        if (!hit(b)) {
-          placed.push(b);
+        var o = opts[i], bb = { x: o.x, y: o.y, w: w, h: h };
+        if (!hit(bb)) {
+          placed.push(bb);
           var tx = o.a === 'start' ? o.x + 2 : o.a === 'end' ? o.x + w - 2 : o.x + w / 2;
-          var tEl = document.createElementNS(NS, 'text'); tEl.setAttribute('x', tx); tEl.setAttribute('y', o.y + h - 4); tEl.setAttribute('text-anchor', o.a); tEl.setAttribute('class', 'pt-lab'); tEl.setAttribute('font-size', fs); tEl.textContent = label; p.a.appendChild(tEl);
+          var te = document.createElementNS(NS, 'text'); te.setAttribute('x', tx); te.setAttribute('y', o.y + h - 4); te.setAttribute('text-anchor', o.a); te.setAttribute('class', 'pt-lab'); te.setAttribute('font-size', fs); te.textContent = label; p.a.appendChild(te);
           return;
         }
       }
     });
     box.innerHTML = ''; box.appendChild(svg);
   }
-  render();
-  var tmr; window.addEventListener('resize', function () { clearTimeout(tmr); tmr = setTimeout(render, 150); });
+  function renderAll() { host.querySelectorAll('.smap-box').forEach(render); }
+  renderAll();
+  var tmr; window.addEventListener('resize', function () { clearTimeout(tmr); tmr = setTimeout(renderAll, 150); });
+  host.querySelectorAll('.smap-tabs button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      host.querySelectorAll('.smap-tabs button').forEach(function (b) { var on = b === btn; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+      host.querySelectorAll('.smap-box').forEach(function (bx) { bx.classList.toggle('on', bx.dataset.k === btn.dataset.k); });
+      renderAll();
+    });
+  });
   host.addEventListener('click', function (e) {
     var a = e.target.closest('a.pt'); if (!a) return; e.preventDefault();
     var t = document.getElementById(a.getAttribute('href').slice(1)); if (!t) return;
