@@ -428,7 +428,7 @@ VIEWS.start = () => {
   ${sec('In Arbeit', open, 'Keine offenen Aufträge. Neuer Auftrag über den gelben Button unten rechts.', `<ul class="rows">${open.map(j => jobRow(j)).join('')}</ul>`)}
   ${sec('Abholbereit', ready, 'Nichts abholbereit.', `<ul class="rows">${ready.map(j => jobRow(j)).join('')}</ul>`)}
   ${unpaid.length ? sec('Abgeholt, nicht bezahlt', unpaid, '', `<ul class="rows">${unpaid.map(j => jobRow(j)).join('')}</ul>`) : ''}
-  ${sec('Saitenbestand knapp', low, 'Alle Saiten ausreichend vorrätig.', `<ul class="rows">${low.map(s => `<li class="row click" data-act="string" data-id="${s.id}"><div><div class="t"><i class="sw" style="--c:${esc(s.color)}"></i>${esc(s.name)}</div><div class="s mono">${kg(s.meters)} m übrig</div></div><div class="acts">${stockChip(s)}<button class="btn sm" data-act="reel" data-id="${s.id}">+ Rolle</button></div></li>`).join('')}</ul>`)}
+  ${sec('Saitenbestand knapp', low, 'Alle Saiten ausreichend vorrätig.', `<ul class="rows">${low.map(s => `<li class="row click" data-act="string" data-id="${s.id}"><div><div class="t"><i class="sw" style="--c:${esc(s.color)}"></i>${esc(s.name)}</div><div class="s mono">${kg(s.meters)} m übrig</div></div><div class="acts">${stockChip(s)}<button class="btn sm" data-act="setstock" data-id="${s.id}">Bestand</button><button class="btn sm" data-act="reel" data-id="${s.id}">+ Rolle</button></div></li>`).join('')}</ul>`)}
   ${sec('Fällig zum Neubesaiten', due, 'Kein Schläger ist länger als drei Monate mit Polyester besaitet.', `<ul class="rows">${due.map(d => dueRow(d)).join('')}</ul>`)}`;
 };
 function dueList() {
@@ -498,7 +498,7 @@ VIEWS.saiten = () => {
     const cost = s.reelPrice && s.reelLength ? ` · ${eur(s.reelPrice / s.reelLength * (s.onlyCross ? st.mCross : st.mFull))} Saitenkosten pro ${s.onlyCross ? 'Hybrid-Hälfte' : 'Besaitung'}` : '';
     return `<li class="row click${s.active ? '' : ' muted'}" data-act="string" data-id="${s.id}"><div><div class="t"><i class="sw" style="--c:${esc(s.color)}"></i>${esc(s.name)}${s.onlyCross ? ' <span class="chip">Nur Quersaite</span>' : ''}${s.active ? '' : ' <span class="chip">Nicht im Angebot</span>'}</div>
       <div class="s"><span class="mono">${s.meters == null ? 'Bestand noch nicht eingetragen' : s.meters < 0 ? '0 m – Bestand prüfen (' + kg(s.meters) + ')' : kg(s.meters) + ' m'}</span>${esc(beds)}${esc(cost)}</div>${s.meters == null ? '' : `<div class="meter ${k || ''}"><i style="width:${pct}%"></i></div>`}</div>
-      <div class="acts">${stockChip(s)}<button class="btn sm" data-act="reel" data-id="${s.id}">+ Rolle</button></div></li>`; }).join('')}</ul></section>`; }).join('')}`;
+      <div class="acts">${stockChip(s)}<button class="btn sm" data-act="setstock" data-id="${s.id}">Bestand</button><button class="btn sm" data-act="reel" data-id="${s.id}">+ Rolle</button></div></li>`; }).join('')}</ul></section>`; }).join('')}`;
 };
 
 VIEWS.finanzen = () => {
@@ -723,6 +723,23 @@ function reelDialog(s) {
     dlg.close(); commit('Rolle hinzugefügt'); toast(`${kg(m)} m ${s.name} hinzugefügt`);
   });
 }
+function stockDialog(s) {
+  openDlg(`<form><div class="dh"><h2>Bestand eintragen</h2><button type="button" class="x" data-close aria-label="Schließen">×</button></div><div class="db">
+    <div class="note"><i class="sw" style="--c:${esc(s.color)}"></i><b>${esc(s.name)}</b> · bisher ${s.meters == null ? 'nicht eingetragen' : kg(s.meters) + ' m'}</div>
+    <div class="grid2"><label class="f"><span>Bestand jetzt (m)</span><input id="b-m" inputmode="decimal" value="${s.meters == null ? '' : kg(s.meters)}" placeholder="z. B. 145"></label>
+    <label class="f"><span>oder Anzahl Sets (je 12 m)</span><input id="b-sets" inputmode="decimal" placeholder="z. B. 2"></label></div>
+    <p class="small muted" style="margin:0">Für eine angebrochene Rolle reicht eine Schätzung. Ab jetzt bucht die Verwaltung jede fertige Besaitung automatisch ab.</p>
+    <label class="chk"><input type="checkbox" id="b-none" ${s.meters == null ? 'checked' : ''}> Bestand unbekannt (keine Ampel auf der Website)</label></div>
+    <div class="df"><div class="r"><button type="button" class="btn" data-close>Abbrechen</button><button class="btn p" type="submit">Speichern</button></div></div></form>`, () => {
+    if ($('#b-none').checked) s.meters = null;
+    else { const sets = num($('#b-sets').value); const m = sets != null ? r1(sets * 12) : num($('#b-m').value); if (m == null) { $('#b-m').focus(); return; } s.meters = m; }
+    dlg.close(); commit('Bestand eingetragen'); toast(s.meters == null ? `${s.name}: Bestand unbekannt` : `${s.name}: ${kg(s.meters)} m`);
+  });
+  const uncheck = () => { $('#b-none').checked = false; };
+  $('#b-m').oninput = uncheck;
+  $('#b-sets').oninput = () => { uncheck(); const v = num($('#b-sets').value); if (v != null) $('#b-m').value = kg(r1(v * 12)); };
+  $('#b-m').focus();
+}
 function expDialog(e) {
   const isNew = !e; e = e || { id: uid(), date: iso(), desc: '', cat: 'Saiten', amount: null, receipt: true };
   openDlg(`<form><div class="dh"><h2>${isNew ? 'Neue Ausgabe' : 'Ausgabe'}</h2><button type="button" class="x" data-close aria-label="Schließen">×</button></div><div class="db">
@@ -770,7 +787,7 @@ document.addEventListener('click', e => {
     cust: () => location.hash = 'kunden:' + id,
     newcust: () => custDialog(), editcust: () => custDialog(custById(id)),
     newrack: () => rackDialog(null, t.dataset.cust), editrack: () => rackDialog(rackById(id)),
-    string: () => stringDialog(strById(id)), newstring: () => stringDialog(), reel: () => reelDialog(strById(id)),
+    string: () => stringDialog(strById(id)), newstring: () => stringDialog(), reel: () => reelDialog(strById(id)), setstock: () => stockDialog(strById(id)),
     newexp: () => expDialog(), exp: () => expDialog(DB.expenses.find(x => x.id === id)),
     csvin: () => { const y = String(YEAR); const rows = [['Datum', 'Kunde', 'Leistung', 'Betrag', 'Zahlart']].concat(DB.jobs.filter(j => j.paid && (payDate(j) || '').startsWith(y)).sort((a, b) => payDate(a).localeCompare(payDate(b))).map(j => [fmtD(payDate(j)), (custById(j.customerId) || {}).name || '', 'Besaitung ' + ((rackById(j.rackId) || {}).model || '') + ': ' + setupText(j), String(j.price).replace('.', ','), j.payMethod || ''])); download(`einnahmen-${y}.csv`, rows.map(r => r.map(csvCell).join(';')).join('\n'), 'text/csv'); },
     csvex: () => { const y = String(YEAR); const rows = [['Datum', 'Beschreibung', 'Kategorie', 'Betrag', 'Beleg']].concat(DB.expenses.filter(e => (e.date || '').startsWith(y)).sort((a, b) => a.date.localeCompare(b.date)).map(e => [fmtD(e.date), e.desc, e.cat, String(e.amount).replace('.', ','), e.receipt ? 'ja' : 'nein'])); download(`ausgaben-${y}.csv`, rows.map(r => r.map(csvCell).join(';')).join('\n'), 'text/csv'); },
