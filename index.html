@@ -135,6 +135,11 @@ h2 { font-family: var(--display); font-weight: 800; text-transform: uppercase; f
 .lg-dot { display: inline-block; width: .8rem; height: .8rem; border-radius: 50%; background: var(--muted); margin-right: .35rem; vertical-align: -.1em; }
 .lg-set { background: radial-gradient(circle, var(--cross) 0 35%, var(--muted) 36%); }
 .lg-x { background: transparent; border: 1.5px dashed var(--ink); }
+.lg-spin .lg-dot { margin-right: .2rem; vertical-align: middle; }
+.lg-s1 { width: .45rem; height: .45rem; }
+.lg-s2 { width: .75rem; height: .75rem; }
+.lg-s3 { width: 1.1rem; height: 1.1rem; margin-right: .45rem !important; }
+.pt .dot { fill-opacity: .9; }
 .str.flash { animation: flash 1.6s ease-out; }
 @keyframes flash { 0% { background: rgba(217, 242, 75, .55); } 100% { background: transparent; } }
 .stock.ok { background: rgba(46, 160, 90, .18); }
@@ -512,7 +517,7 @@ fetch('bestand.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r
   var intro = document.querySelector('#saiten .intro');
   if (intro) intro.textContent = (poly.length + other.length) + ' Saiten zur Auswahl' + (sets.length ? ' und ' + sets.length + ' fertige Hybrid-Sets' : '') + ', alle zum gleichen Preis.' + (cross.length ? ' Dazu ' + cross.map(function (x) { return x.name.split(' ').slice(1).join(' ') || x.name; }).join(' und ') + ' als Quersaite für Hybride.' : '') + ' Unsicher, welche passt? Schreib mir, wie du spielst, dann empfehle ich dir eine.';
   if (window.reqFillStrings) window.reqFillStrings();
-  drawMap(cat.filter(function (x) { return x.y != null; }), slug, col);
+  drawMap(cat.filter(function (x) { return x.firm != null; }), slug, col);
 }).catch(function () {});
 
 // ---- Saiten-Karte: Power ↔ Kontrolle (x), Komfort ↔ Spin (y) ----
@@ -522,7 +527,7 @@ function drawMap(items, slug, col) {
   if (!host) {
     host = document.createElement('div'); host.id = 'smap'; host.className = 'smap';
     host.innerHTML = '<div class="smap-head"><h3>Saiten-Karte</h3><p>Wo liegt welche Saite? Tippe auf einen Punkt für die Beschreibung.</p></div><div class="smap-box"></div>' +
-      '<div class="smap-legend"><span><i class="lg-dot"></i>Saite</span><span><i class="lg-dot lg-set"></i>Hybrid-Set</span><span><i class="lg-dot lg-x"></i>nur Quersaite</span></div>';
+      '<div class="smap-legend"><span class="lg-spin"><i class="lg-dot lg-s1"></i><i class="lg-dot lg-s2"></i><i class="lg-dot lg-s3"></i>Punktgröße = Spin</span><span><i class="lg-dot lg-set"></i>Hybrid-Set</span><span><i class="lg-dot lg-x"></i>nur Quersaite</span></div>';
     var g = document.querySelector('#saiten .groups'); g.parentNode.insertBefore(host, g);
   }
   var box = host.querySelector('.smap-box'), NS = 'http://www.w3.org/2000/svg';
@@ -534,7 +539,7 @@ function drawMap(items, slug, col) {
     var X = function (v) { return m.l + px + (Math.max(0, Math.min(100, v)) / 100) * (iw - 2 * px); };
     var Yp = function (v) { return m.t + py + (1 - Math.max(0, Math.min(100, v)) / 100) * (ih - 2 * py); };
     var svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', 'Saiten-Karte: waagerecht Power bis Kontrolle, senkrecht Komfort bis Spin');
+    svg.setAttribute('aria-label', 'Saiten-Karte: waagerecht Power bis Kontrolle, senkrecht komfortabel bis knackig, Punktgröße zeigt den Spin');
     function el(t, a, txt) { var e = document.createElementNS(NS, t); for (var k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; svg.appendChild(e); return e; }
     // quadrants + axes
     el('rect', { x: m.l, y: m.t, width: iw, height: ih, rx: 10, class: 'q-bg' });
@@ -542,14 +547,14 @@ function drawMap(items, slug, col) {
     el('line', { x1: m.l, y1: Yp(50), x2: m.l + iw, y2: Yp(50), class: 'q-axis' });
     el('text', { x: m.l, y: m.t - 10, class: 'q-lab', 'text-anchor': 'start' }, '← Power');
     el('text', { x: m.l + iw, y: m.t - 10, class: 'q-lab', 'text-anchor': 'end' }, 'Kontrolle →');
-    el('text', { x: X(50) + 6, y: m.t + 14, class: 'q-lab q-y' }, '↑ Spin');
-    el('text', { x: X(50) + 6, y: m.t + ih - 8, class: 'q-lab q-y' }, '↓ Komfort');
+    el('text', { x: X(50) + 6, y: m.t + 14, class: 'q-lab q-y' }, '↑ knackig');
+    el('text', { x: X(50) + 6, y: m.t + ih - 8, class: 'q-lab q-y' }, '↓ komfortabel');
     var placed = [], ptsInfo = [];
-    // points first, labels after (with simple collision avoidance)
-    items.forEach(function (it) {
-      var cx = X(+it.pos || 0), cy = Yp(+it.y || 0), r = W < 480 ? 6.5 : 7.5;
+    // points first (big spin dots underneath), labels after (with simple collision avoidance)
+    items.slice().sort(function (a, b) { return (+b.spin || 0) - (+a.spin || 0); }).forEach(function (it) {
+      var sp = Math.max(0, Math.min(100, +it.spin || 0)), cx = X(+it.pos || 0), cy = Yp(+it.firm || 0), r = (W < 480 ? 3.5 : 4.5) + sp / 100 * (W < 480 ? 8 : 10);
       var a = el('a', { href: '#' + slug(it.name), class: 'pt' });
-      var t = document.createElementNS(NS, 'title'); t.textContent = it.name; a.appendChild(t);
+      var t = document.createElementNS(NS, 'title'); t.textContent = it.name + ' · Spin ' + Math.round(sp / 20) + '/5'; a.appendChild(t);
       function c(attrs) { var e = document.createElementNS(NS, 'circle'); for (var k in attrs) e.setAttribute(k, attrs[k]); a.appendChild(e); }
       if (it.hset) { c({ cx: cx, cy: cy, r: r + 1, fill: col(it.ac), class: 'dot' }); c({ cx: cx, cy: cy, r: r * 0.5, fill: col(it.bc) }); }
       else if (it.onlyCross) c({ cx: cx, cy: cy, r: r, fill: col(it.color), class: 'dot dot-x' });
