@@ -293,6 +293,26 @@ function buildStock() {
   return JSON.stringify({ strings: o }, null, 1) + '\n';
 }
 
+// Takes over stickers already listed in the public data.csv (before the Verwaltung existed).
+function importPublicCSV(text) {
+  if (!text) return 0; let n = 0;
+  const key = t => String(t || '').toLowerCase().replace(/[\d.,]+\s*(mm)?/g, '').replace(/[^a-z]/g, '');
+  const find = t => { const k = key(t); if (!k) return null; return DB.strings.find(s => key(s.name) === k) || DB.strings.find(s => key(s.name).includes(k) || k.includes(key(s.name))); };
+  text.split(/\r?\n/).forEach(line => {
+    if (!line.trim() || line.trim()[0] === '#') return;
+    const c = line.split(';').map(x => x.trim()); if (!/^\d+$/.test(c[0])) return;
+    const st = pad3(c[0]); const main = find(c[2]); if (!main) return;
+    const cross = c[3] ? find(c[3]) : null;
+    const ts = (c[4] || '').match(/[\d.,]+/g) || []; const tm = num(ts[0]), tc = num(ts[1] ?? ts[0]);
+    const dm = (c[5] || '').match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/); const d = dm ? `${dm[3]}-${dm[2].padStart(2, '0')}-${dm[1].padStart(2, '0')}` : iso();
+    let r = DB.rackets.find(x => x.sticker === st);
+    if (!r) { const cu = { id: uid(), name: 'Kunde Nr. ' + st, phone: '', note: 'Aus der alten data.csv übernommen – Name bitte ergänzen' }; DB.customers.push(cu); r = { id: uid(), customerId: cu.id, model: c[1] || 'Schläger', sticker: st, pattern: '', note: '' }; DB.rackets.push(r); }
+    DB.jobs.push({ id: uid(), customerId: r.customerId, rackId: r.id, sticker: st, mainId: main.id, crossId: cross && cross.id !== main.id ? cross.id : '', tMain: tm, tCross: tc, price: DB.settings.price, status: 'abgeholt', paid: true, payMethod: '', paidDate: d, received: d, doneDate: d, note: 'Übernommen aus data.csv – Bezahlstatus prüfen', deducted: {} });
+    n++;
+  });
+  return n;
+}
+
 // ---------- GitHub storage ----------
 const b64e = t => btoa(unescape(encodeURIComponent(t)));
 const b64d = b => decodeURIComponent(escape(atob(b.replace(/\s/g, ''))));
@@ -342,10 +362,10 @@ async function pushAll(msg) {
   }
 }
 async function loadRemote() {
+  for (const p of ['data.csv', 'bestand.json']) { try { LAST[p] = await ghGet(CFG.pubRepo, p); } catch (e) { } }
   const t = await ghGet(CFG.privRepo, 'db.json');
   if (t == null) return false;
   DB = JSON.parse(t); saveLocal();
-  for (const p of ['data.csv', 'bestand.json']) { try { LAST[p] = await ghGet(CFG.pubRepo, p); } catch (e) { } }
   return true;
 }
 
@@ -753,7 +773,7 @@ document.addEventListener('click', e => {
     reload: async () => { if (CFG.demo) return; setSync('busy', 'Lädt …'); try { await loadRemote(); setSync('ok', 'Aktuell ✓'); render(); } catch (err) { setSync('err', 'Fehler ⟳'); toast(err.message); } },
     logout: () => { if (!t.dataset.sure) { t.dataset.sure = 1; t.textContent = 'Wirklich abmelden?'; return; } if (CFG.demo) store(DEMO_KEY, null); store(CACHE_KEY, null); CFG.token = ''; CFG.demo = false; store(CFG_KEY, CFG); DB = null; location.hash = 'start'; setSync('', 'Abgemeldet'); render(); },
     demo: () => { CFG.demo = true; store(CFG_KEY, CFG); DB = store(DEMO_KEY) || demoDB(); saveLocal(); setSync('demo', 'Demo · nur lokal'); location.hash = 'start'; render(); },
-    create: async () => { DB = seedDB(); t.disabled = true; try { await pushAll('Verwaltung angelegt'); saveLocal(); setSync('ok', 'Gespeichert ✓'); location.hash = 'saiten'; render(); toast('Angelegt – bitte jetzt den Bestand eintragen'); } catch (err) { DB = null; t.disabled = false; $('#l-msg').innerHTML = `<div class="note bad">${esc(err.message)}</div>`; } }
+    create: async () => { DB = seedDB(); importPublicCSV(LAST['data.csv']); t.disabled = true; try { await pushAll('Verwaltung angelegt'); saveLocal(); setSync('ok', 'Gespeichert ✓'); location.hash = 'saiten'; render(); toast('Angelegt – bitte jetzt den Bestand eintragen'); } catch (err) { DB = null; t.disabled = false; $('#l-msg').innerHTML = `<div class="note bad">${esc(err.message)}</div>`; } }
   }[a] || (() => { }))();
 });
 document.addEventListener('input', e => { if (e.target.id === 'q') { QUERY = e.target.value; const pos = e.target.selectionStart; render(); const q = $('#q'); q.focus(); q.setSelectionRange(pos, pos); } });
