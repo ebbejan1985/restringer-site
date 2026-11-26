@@ -117,6 +117,26 @@ h2 { font-family: var(--display); font-weight: 800; text-transform: uppercase; f
 .stock { display: inline-block; font-family: var(--mono); font-style: normal; font-weight: 500; font-size: .66rem; letter-spacing: .04em; padding: .12rem .45rem; border-radius: 999px; margin-left: .45rem; vertical-align: .12em; white-space: nowrap; color: var(--ink); }
 .pair2 { display: inline-flex; gap: .15rem; }
 .pair2 .sw { margin-right: 0; }
+.smap { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 1rem 1.1rem 1.1rem; margin-bottom: 1.5rem; }
+.smap-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .2rem 1rem; margin-bottom: .4rem; }
+.smap-head h3 { font-family: var(--display); font-weight: 800; font-size: 1.5rem; text-transform: uppercase; margin: 0; letter-spacing: .02em; }
+.smap-head p { margin: 0; color: var(--muted); font-size: .92rem; }
+.smap-box { width: 100%; }
+.smap-box svg { display: block; max-width: 100%; height: auto; }
+.q-bg { fill: var(--chip); }
+.q-axis { stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.q-lab { fill: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.pt { cursor: pointer; }
+.pt .dot { stroke: var(--muted); stroke-width: 1.5; }
+.pt .dot-x { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 2 2; }
+.pt:hover .dot, .pt:focus .dot { stroke: var(--ink); }
+.pt-lab { fill: var(--ink); font-family: var(--body); font-weight: 700; }
+.smap-legend { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; margin-top: .6rem; font-size: .82rem; color: var(--muted); }
+.lg-dot { display: inline-block; width: .8rem; height: .8rem; border-radius: 50%; background: var(--muted); margin-right: .35rem; vertical-align: -.1em; }
+.lg-set { background: radial-gradient(circle, var(--cross) 0 35%, var(--muted) 36%); }
+.lg-x { background: transparent; border: 1.5px dashed var(--ink); }
+.str.flash { animation: flash 1.6s ease-out; }
+@keyframes flash { 0% { background: rgba(217, 242, 75, .55); } 100% { background: transparent; } }
 .stock.ok { background: rgba(46, 160, 90, .18); }
 .stock.low { background: rgba(230, 160, 0, .26); }
 .stock.out { background: rgba(220, 60, 60, .22); }
@@ -460,17 +480,18 @@ fetch('bestand.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r
     return;
   }
   var esc = function (t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var slug = function (n) { return 'saite-' + String(n).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); };
   var col = function (c) { return /^#[0-9a-f]{3,8}$/i.test(c || '') ? c : '#888888'; };
   var em = function (it) { return it.status && L[it.status] ? '<em class="stock ' + it.status + '">' + L[it.status] + '</em>' : ''; };
   var chips = function (it) { return (it.chips || []).map(function (c, i) { return '<span class="chip' + (i === 0 ? ' k' : '') + '">' + esc(c) + '</span>'; }).join(''); };
   var sub = function (it) { return [it.art === 'Polyester' ? 'Co-Poly' : it.art, it.profile, it.colorName].filter(Boolean).join(' · '); };
   function row(it, scale) {
-    return '<div class="str"><div class="nm"><h4><i class="sw" style="--c:' + col(it.color) + '"></i>' + esc(it.name) + em(it) + '<span>' + esc(sub(it)) + '</span></h4>' +
+    return '<div class="str" id="' + slug(it.name) + '"><div class="nm"><h4><i class="sw" style="--c:' + col(it.color) + '"></i>' + esc(it.name) + em(it) + '<span>' + esc(sub(it)) + '</span></h4>' +
       (scale ? '<span class="pos" style="--p:' + Math.max(0, Math.min(100, +it.pos || 0)) + '%" title="Einordnung zwischen Power und Kontrolle"></span>' : '') +
       '</div><p>' + esc(it.desc) + '</p><div class="chips">' + chips(it) + '</div></div>';
   }
   function setRow(it) {
-    return '<div class="str hsetrow"><div class="nm"><h4><i class="sw" style="--c:' + col(it.ac) + '"></i>' + esc(it.name) + em(it) + '<span>' + esc(it.a) + ' + ' + esc(it.b) + ' · längs/quer tauschbar</span></h4>' +
+    return '<div class="str hsetrow" id="' + slug(it.name) + '"><div class="nm"><h4><i class="sw" style="--c:' + col(it.ac) + '"></i>' + esc(it.name) + em(it) + '<span>' + esc(it.a) + ' + ' + esc(it.b) + ' · längs/quer tauschbar</span></h4>' +
       '<span class="pair2"><i class="sw" style="--c:' + col(it.ac) + '"></i><i class="sw" style="--c:' + col(it.bc) + '"></i></span></div><p>' + esc(it.desc) + '</p><div class="chips">' + chips(it) + '</div></div>';
   }
   var cat = d.catalog;
@@ -491,7 +512,78 @@ fetch('bestand.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r
   var intro = document.querySelector('#saiten .intro');
   if (intro) intro.textContent = (poly.length + other.length) + ' Saiten zur Auswahl' + (sets.length ? ' und ' + sets.length + ' fertige Hybrid-Sets' : '') + ', alle zum gleichen Preis.' + (cross.length ? ' Dazu ' + cross.map(function (x) { return x.name.split(' ').slice(1).join(' ') || x.name; }).join(' und ') + ' als Quersaite für Hybride.' : '') + ' Unsicher, welche passt? Schreib mir, wie du spielst, dann empfehle ich dir eine.';
   if (window.reqFillStrings) window.reqFillStrings();
+  drawMap(cat.filter(function (x) { return x.y != null; }), slug, col);
 }).catch(function () {});
+
+// ---- Saiten-Karte: Power ↔ Kontrolle (x), Komfort ↔ Spin (y) ----
+function drawMap(items, slug, col) {
+  if (!items.length) return;
+  var host = document.getElementById('smap');
+  if (!host) {
+    host = document.createElement('div'); host.id = 'smap'; host.className = 'smap';
+    host.innerHTML = '<div class="smap-head"><h3>Saiten-Karte</h3><p>Wo liegt welche Saite? Tippe auf einen Punkt für die Beschreibung.</p></div><div class="smap-box"></div>' +
+      '<div class="smap-legend"><span><i class="lg-dot"></i>Saite</span><span><i class="lg-dot lg-set"></i>Hybrid-Set</span><span><i class="lg-dot lg-x"></i>nur Quersaite</span></div>';
+    var g = document.querySelector('#saiten .groups'); g.parentNode.insertBefore(host, g);
+  }
+  var box = host.querySelector('.smap-box'), NS = 'http://www.w3.org/2000/svg';
+  function render() {
+    var W = Math.max(300, box.clientWidth), H = Math.round(W < 560 ? W * 1.15 : Math.min(Math.max(W * 0.7, 360), 560));
+    var m = { l: 22, r: 22, t: 30, b: 30 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    var fs = W < 480 ? 11 : 12.5;
+    var px = Math.min(70, iw * 0.08), py = Math.min(34, ih * 0.07);
+    var X = function (v) { return m.l + px + (Math.max(0, Math.min(100, v)) / 100) * (iw - 2 * px); };
+    var Yp = function (v) { return m.t + py + (1 - Math.max(0, Math.min(100, v)) / 100) * (ih - 2 * py); };
+    var svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Saiten-Karte: waagerecht Power bis Kontrolle, senkrecht Komfort bis Spin');
+    function el(t, a, txt) { var e = document.createElementNS(NS, t); for (var k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; svg.appendChild(e); return e; }
+    // quadrants + axes
+    el('rect', { x: m.l, y: m.t, width: iw, height: ih, rx: 10, class: 'q-bg' });
+    el('line', { x1: X(50), y1: m.t, x2: X(50), y2: m.t + ih, class: 'q-axis' });
+    el('line', { x1: m.l, y1: Yp(50), x2: m.l + iw, y2: Yp(50), class: 'q-axis' });
+    el('text', { x: m.l, y: m.t - 10, class: 'q-lab', 'text-anchor': 'start' }, '← Power');
+    el('text', { x: m.l + iw, y: m.t - 10, class: 'q-lab', 'text-anchor': 'end' }, 'Kontrolle →');
+    el('text', { x: X(50) + 6, y: m.t + 14, class: 'q-lab q-y' }, '↑ Spin');
+    el('text', { x: X(50) + 6, y: m.t + ih - 8, class: 'q-lab q-y' }, '↓ Komfort');
+    var placed = [], ptsInfo = [];
+    // points first, labels after (with simple collision avoidance)
+    items.forEach(function (it) {
+      var cx = X(+it.pos || 0), cy = Yp(+it.y || 0), r = W < 480 ? 6.5 : 7.5;
+      var a = el('a', { href: '#' + slug(it.name), class: 'pt' });
+      var t = document.createElementNS(NS, 'title'); t.textContent = it.name; a.appendChild(t);
+      function c(attrs) { var e = document.createElementNS(NS, 'circle'); for (var k in attrs) e.setAttribute(k, attrs[k]); a.appendChild(e); }
+      if (it.hset) { c({ cx: cx, cy: cy, r: r + 1, fill: col(it.ac), class: 'dot' }); c({ cx: cx, cy: cy, r: r * 0.5, fill: col(it.bc) }); }
+      else if (it.onlyCross) c({ cx: cx, cy: cy, r: r, fill: col(it.color), class: 'dot dot-x' });
+      else c({ cx: cx, cy: cy, r: r, fill: col(it.color), class: 'dot' });
+      placed.push({ x: cx - r - 1, y: cy - r - 1, w: 2 * r + 2, h: 2 * r + 2 });
+      ptsInfo.push({ it: it, cx: cx, cy: cy, r: r, a: a });
+    });
+    var ctx = document.createElement('canvas').getContext('2d'); ctx.font = '600 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+    var hit = function (b) { return placed.some(function (p) { return b.x < p.x + p.w && b.x + b.w > p.x && b.y < p.y + p.h && b.y + b.h > p.y; }) || b.x < 2 || b.x + b.w > W - 2 || b.y < m.t || b.y + b.h > m.t + ih; };
+    ptsInfo.forEach(function (p) {
+      var label = p.it.name.split(' ').slice(1).join(' ').replace(/\s*\(Hybrid-Set\)/, '') || p.it.name;
+      var w = ctx.measureText(label).width + 4, h = fs + 3, g = p.r + 4;
+      var opts = [{ x: p.cx + g, y: p.cy - h / 2, a: 'start' }, { x: p.cx - g - w, y: p.cy - h / 2, a: 'end' }, { x: p.cx - w / 2, y: p.cy - g - h, a: 'middle' }, { x: p.cx - w / 2, y: p.cy + g, a: 'middle' },
+        { x: p.cx + g, y: p.cy - h - 2, a: 'start' }, { x: p.cx + g, y: p.cy + 2, a: 'start' }, { x: p.cx - g - w, y: p.cy - h - 2, a: 'end' }, { x: p.cx - g - w, y: p.cy + 2, a: 'end' }];
+      for (var i = 0; i < opts.length; i++) {
+        var o = opts[i], b = { x: o.x, y: o.y, w: w, h: h };
+        if (!hit(b)) {
+          placed.push(b);
+          var tx = o.a === 'start' ? o.x + 2 : o.a === 'end' ? o.x + w - 2 : o.x + w / 2;
+          var tEl = document.createElementNS(NS, 'text'); tEl.setAttribute('x', tx); tEl.setAttribute('y', o.y + h - 4); tEl.setAttribute('text-anchor', o.a); tEl.setAttribute('class', 'pt-lab'); tEl.setAttribute('font-size', fs); tEl.textContent = label; p.a.appendChild(tEl);
+          return;
+        }
+      }
+    });
+    box.innerHTML = ''; box.appendChild(svg);
+  }
+  render();
+  var tmr; window.addEventListener('resize', function () { clearTimeout(tmr); tmr = setTimeout(render, 150); });
+  host.addEventListener('click', function (e) {
+    var a = e.target.closest('a.pt'); if (!a) return; e.preventDefault();
+    var t = document.getElementById(a.getAttribute('href').slice(1)); if (!t) return;
+    t.scrollIntoView({ behavior: 'smooth', block: 'center' }); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash');
+  });
+}
 
 // ---- Personal view: sticker number from ?s=017 (QR code) or #s017 ----
 (function () {
