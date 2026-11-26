@@ -907,16 +907,12 @@ async function labelCanvas(j) {
   const strs = hp ? `${hp[0]} / ${hp[1]}` : isHybrid(j) ? `${shortName(strName(j.mainId))} / ${shortName(strName(j.crossId))}` : shortName(strName(j.mainId));
   const L = [{ t: `${date} · ${ten}`, f: '800 74px "Saira Condensed", "Arial Narrow", sans-serif' }, { t: strs, f: '600 64px "Saira Condensed", "Arial Narrow", sans-serif' }, { t: 'Restring-Service · WhatsApp 0152 55357583', f: '600 40px "Saira Condensed", "Arial Narrow", sans-serif' }];
   const c = document.createElement('canvas'), x = c.getContext('2d');
-  const badge = 9.6 * PX; let w = 0; L.forEach(l => { x.font = l.f; w = Math.max(w, x.measureText(l.t).width); });
-  c.width = Math.ceil(pad + badge + 0.9 * PX + w + pad); c.height = H;
+  let w = 0; L.forEach(l => { x.font = l.f; w = Math.max(w, x.measureText(l.t).width); });
+  c.width = Math.ceil(pad + w + pad); c.height = H;
   x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
-  // Monogramm-Block links
-  x.fillStyle = '#000'; const bx = pad, by = (H - badge) / 2; x.beginPath(); x.roundRect ? x.roundRect(bx, by, badge, badge, 18) : x.rect(bx, by, badge, badge); x.fill();
-  x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '800 92px "Saira Condensed", "Arial Narrow", sans-serif'; x.fillText('RS', bx + badge / 2, by + badge * .44);
-  x.font = '600 26px "Saira Condensed", "Arial Narrow", sans-serif'; x.fillText('RESTRING', bx + badge / 2, by + badge * .82);
   // Text
-  x.fillStyle = '#000'; x.textAlign = 'left'; x.textBaseline = 'alphabetic'; const tx = bx + badge + 0.9 * PX;
-  const ys = [by + 66, by + 136, by + badge - 6];
+  x.fillStyle = '#000'; x.textAlign = 'left'; x.textBaseline = 'alphabetic'; const tx = pad, by = 0.2 * PX;
+  const ys = [by + 66, by + 136, by + 192];
   L.forEach((l, i) => { x.font = l.f; x.fillText(l.t, tx, ys[i]); });
   return c;
 }
