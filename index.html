@@ -111,6 +111,13 @@ h2 { font-family: var(--display); font-weight: 800; text-transform: uppercase; f
 .nm { display: grid; gap: .45rem; min-width: 0; }
 .pos { position: relative; display: block; width: 7rem; height: 3px; border-radius: 2px; background: var(--line); }
 .pos::after { content: ""; position: absolute; top: 50%; left: var(--p); width: 9px; height: 9px; border-radius: 50%; background: var(--ink); transform: translate(-50%, -50%); }
+.xfeat { background: var(--surface); border: 2px solid var(--cross); border-radius: 18px; margin-bottom: 1rem; padding-top: .9rem; overflow: hidden; }
+.xfeat .kicker { padding: 0 1.25rem; color: var(--muted); }
+.xfeat .str { border-bottom: 0; }
+.stock { display: inline-block; font-family: var(--mono); font-style: normal; font-weight: 500; font-size: .66rem; letter-spacing: .04em; padding: .12rem .45rem; border-radius: 999px; margin-left: .45rem; vertical-align: .12em; white-space: nowrap; color: var(--ink); }
+.stock.ok { background: rgba(46, 160, 90, .18); }
+.stock.low { background: rgba(230, 160, 0, .26); }
+.stock.out { background: rgba(220, 60, 60, .22); }
 .chip.k { background: var(--main); color: var(--on-main); }
 .sw { display: inline-block; width: .8rem; height: .8rem; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1.5px var(--surface), 0 0 0 2.6px var(--muted); margin-right: .5rem; vertical-align: -.05em; }
 @media (max-width: 760px) {
@@ -268,19 +275,18 @@ body.personal h1 { font-size: clamp(2.2rem, 8vw, 3.6rem); }
       <div class="sec-head">
         <p class="kicker">Alles für 22 €</p>
         <h2 id="h-saiten">Die Saiten</h2>
-        <p class="intro">Zehn Saiten zur Auswahl, alle zum gleichen Preis. Unsicher, welche passt? Schreib mir, wie du spielst, dann empfehle ich dir eine.</p>
+        <p class="intro">Neun Saiten zur Auswahl, alle zum gleichen Preis. Dazu die Wasabi X als Quersaite für Hybride. Unsicher, welche passt? Schreib mir, wie du spielst, dann empfehle ich dir eine.</p>
       </div>
       <div class="groups">
         <div class="group">
-          <div class="group-head"><h3>Polyester <small>8 Saiten</small></h3><p>Haltbar, mit Spin und Kontrolle</p></div>
+          <div class="group-head"><h3>Polyester <small>7 Saiten</small></h3><p>Haltbar, mit Spin und Kontrolle</p></div>
           <div class="scale"><span>Mehr Power</span><i></i><span>Mehr Kontrolle</span></div>
           <div class="str"><div class="nm"><h4><i class="sw" style="--c:#2f7de1"></i>Solinco Mach-10<span>Co-Poly · 5-eckig · Blau</span></h4><span class="pos" style="--p:0%" title="Einordnung zwischen Power und Kontrolle"></span></div><p>Die kraftvollste Poly in der Liste: Der Ball fliegt mit wenig Aufwand schnell und tief ins Feld, das Gefühl ist für eine Poly weich. Gut für alle, die von Multifilament auf Poly umsteigen.</p><div class="chips"><span class="chip k">Power</span><span class="chip">Komfort</span><span class="chip">Hält Spannung</span></div></div>
-          <div class="str"><div class="nm"><h4><i class="sw" style="--c:#f2e33a"></i>Yonex Poly Tour Pro<span>Co-Poly · rund · Gelb</span></h4><span class="pos" style="--p:14%" title="Einordnung zwischen Power und Kontrolle"></span></div><p>Die unkomplizierteste Poly: rund, weich und angenehm, aber mit wenig Spin. Für Spieler, die nicht extrem hart schlagen. Verliert etwas schneller Spannung als die anderen.</p><div class="chips"><span class="chip k">Komfort</span><span class="chip">Gefühl</span><span class="chip">Einsteiger</span></div></div>
-          <div class="str"><div class="nm"><h4><i class="sw" style="--c:#19b5ff"></i>Toroline Wasabi X<span>Co-Poly · glatt · Neon-Blau</span></h4><span class="pos" style="--p:29%" title="Einordnung zwischen Power und Kontrolle"></span></div><p>Glatte, reibungsarme Poly, komfortabel und lebendig. Die ideale Quersaite zu einer profilierten Längssaite: Die Längssaiten schnappen schneller zurück, das bringt Spin. Als Vollbesaitung ein guter Einstieg in Poly. Aktuell begrenzt vorrätig.</p><div class="chips"><span class="chip k">Snapback</span><span class="chip">Komfort</span><span class="chip">Quersaite</span></div></div>
-          <div class="str"><div class="nm"><h4><i class="sw" style="--c:#ff69b9"></i>Toroline Wasabi<span>Co-Poly · 4-eckig · Pink</span></h4><span class="pos" style="--p:43%" title="Einordnung zwischen Power und Kontrolle"></span></div><p>Die Spin-Saite für weiche Hände: Die Kanten greifen den Ball stark, trotzdem bleibt sie armfreundlich. Etwas weniger Kontrolle als die Kontroll-Polys weiter unten.</p><div class="chips"><span class="chip k">Spin</span><span class="chip">Komfort</span><span class="chip">Lebendig</span></div></div>
-          <div class="str"><div class="nm"><h4><i class="sw" style="--c:#8e9b8a"></i>Grapplesnake Tour M8<span>Co-Poly · 8-eckig · Grau-Grün</span></h4><span class="pos" style="--p:57%" title="Einordnung zwischen Power und Kontrolle"></span></div><p>Für Spieler mit Ballgefühl: sehr gute Kontrolle, viel Touch und Spin. Hält die Spannung besonders lange und funktioniert auch bei niedriger Spannung gut.</p><div class="chips"><span class="chip k">Gefühl</span><span class="chip">Kontrolle</span><span class="chip">Hält Spannung</span></div></div>
-          <div class="str"><div class="nm"><h4><i class="sw" style="--c:#ff3fa4"></i>Solinco Confidential Soft<span>Co-Poly · 5-eckig · Electric Pink</span></h4><span class="pos" style="--p:71%" title="Einordnung zwischen Power und Kontrolle"></span></div><p>Spin und Kontrolle zugleich: greift den Ball stark, bleibt aber kontrolliert. Weicher als klassische Kontroll-Polys. Für lange, schnelle Schwünge.</p><div class="chips"><span class="chip k">Spin</span><span class="chip">Kontrolle</span><span class="chip">Schnelle Schwünge</span></div></div>
-          <div class="str"><div class="nm"><h4><i class="sw" style="--c:#7fe0c3"></i>Yonex Poly Tour Rev<span>Co-Poly · 8-eckig · Mint</span></h4><span class="pos" style="--p:86%" title="Einordnung zwischen Power und Kontrolle"></span></div><p>Gedämpftes Gefühl, viel Kontrolle und Spin, dazu sehr haltbar. Bringt kaum eigene Power, du musst das Tempo selbst machen.</p><div class="chips"><span class="chip k">Kontrolle</span><span class="chip">Spin</span><span class="chip">Haltbar</span></div></div>
+          <div class="str"><div class="nm"><h4><i class="sw" style="--c:#f2e33a"></i>Yonex Poly Tour Pro<span>Co-Poly · rund · Gelb</span></h4><span class="pos" style="--p:17%" title="Einordnung zwischen Power und Kontrolle"></span></div><p>Die unkomplizierteste Poly: rund, weich und angenehm, aber mit wenig Spin. Für Spieler, die nicht extrem hart schlagen. Verliert etwas schneller Spannung als die anderen.</p><div class="chips"><span class="chip k">Komfort</span><span class="chip">Gefühl</span><span class="chip">Einsteiger</span></div></div>
+          <div class="str"><div class="nm"><h4><i class="sw" style="--c:#ff69b9"></i>Toroline Wasabi<span>Co-Poly · 4-eckig · Pink</span></h4><span class="pos" style="--p:33%" title="Einordnung zwischen Power und Kontrolle"></span></div><p>Die Spin-Saite für weiche Hände: Die Kanten greifen den Ball stark, trotzdem bleibt sie armfreundlich. Etwas weniger Kontrolle als die Kontroll-Polys weiter unten.</p><div class="chips"><span class="chip k">Spin</span><span class="chip">Komfort</span><span class="chip">Lebendig</span></div></div>
+          <div class="str"><div class="nm"><h4><i class="sw" style="--c:#8e9b8a"></i>Grapplesnake Tour M8<span>Co-Poly · 8-eckig · Grau-Grün</span></h4><span class="pos" style="--p:50%" title="Einordnung zwischen Power und Kontrolle"></span></div><p>Acht Kanten greifen den Ball: viel Spin, dazu sehr gutes Ballgefühl und Kontrolle. Hält die Spannung besonders lange und funktioniert auch bei niedriger Spannung gut. Ideal, wenn du selten neu besaiten lässt.</p><div class="chips"><span class="chip k">Spin</span><span class="chip">Gefühl</span><span class="chip">Hält Spannung</span></div></div>
+          <div class="str"><div class="nm"><h4><i class="sw" style="--c:#ff3fa4"></i>Solinco Confidential Soft<span>Co-Poly · 5-eckig · Electric Pink</span></h4><span class="pos" style="--p:67%" title="Einordnung zwischen Power und Kontrolle"></span></div><p>Spin und Kontrolle zugleich: greift den Ball stark, bleibt aber kontrolliert. Weicher als klassische Kontroll-Polys. Für lange, schnelle Schwünge.</p><div class="chips"><span class="chip k">Spin</span><span class="chip">Kontrolle</span><span class="chip">Schnelle Schwünge</span></div></div>
+          <div class="str"><div class="nm"><h4><i class="sw" style="--c:#7fe0c3"></i>Yonex Poly Tour Rev<span>Co-Poly · 8-eckig · Mint</span></h4><span class="pos" style="--p:83%" title="Einordnung zwischen Power und Kontrolle"></span></div><p>Gedämpftes Gefühl, viel Kontrolle und Spin, dazu sehr haltbar. Bringt kaum eigene Power, du musst das Tempo selbst machen. Nur noch Restbestand.</p><div class="chips"><span class="chip k">Kontrolle</span><span class="chip">Spin</span><span class="chip">Haltbar</span></div></div>
           <div class="str"><div class="nm"><h4><i class="sw" style="--c:#a9b0b8"></i>Grapplesnake Tour Sniper<span>Co-Poly · 5-eckig · Silbergrau</span></h4><span class="pos" style="--p:100%" title="Einordnung zwischen Power und Kontrolle"></span></div><p>Die kontrollierteste Saite der Liste: sehr wenig Power, mittelfest. Der Ball bleibt auch bei vollem Schwung im Feld. Nur für kräftige Spieler.</p><div class="chips"><span class="chip k">Kontrolle</span><span class="chip">Präzision</span><span class="chip">Spin</span></div></div>
         </div>
         <div class="group">
@@ -299,6 +305,10 @@ body.personal h1 { font-size: clamp(2.2rem, 8vw, 3.6rem); }
         <h2 id="h-hybrid">Hybrid-Besaitung</h2>
         <p class="intro">Eine Saite für die Längssaiten, eine andere für die Quersaiten. So kombinierst du die Stärken beider, und die Grafik zeigt dir gleich, wie dein Schläger aussieht. Diese sechs passen besonders gut zusammen, andere Kombinationen aus der Liste sind auch möglich.</p>
       </div>
+      <div class="xfeat">
+        <p class="kicker">Standard-Quersaite für Poly-Hybride</p>
+        <div class="str"><div class="nm"><h4><i class="sw" style="--c:#19b5ff"></i>Toroline Wasabi X<span>Co-Poly · glatt · Neon-Blau</span></h4></div><p>Glatt und reibungsarm: Die profilierten Längssaiten gleiten über sie hinweg und schnappen schnell zurück, das bringt Spin. Dazu spielt sie sich komfortabel und lebendig. Gibt es nur als Quersaite im Hybrid.</p><div class="chips"><span class="chip k">Snapback</span><span class="chip">Komfort</span><span class="chip">Nur Hybrid</span></div></div>
+      </div>
       <div class="hybrids">
         <article class="hy">
           <svg class="bed" viewBox="0 0 72 92" aria-hidden="true" data-m="#ff3fa4" data-c="#1b1b1f"></svg>
@@ -307,10 +317,10 @@ body.personal h1 { font-size: clamp(2.2rem, 8vw, 3.6rem); }
             <p>Spin und Kontrolle der Poly, dazu deutlich weicher und armschonender als eine reine Poly-Besaitung.</p></div>
         </article>
         <article class="hy">
-          <svg class="bed" viewBox="0 0 72 92" aria-hidden="true" data-m="#7fe0c3" data-c="#1b1b1f"></svg>
+          <svg class="bed" viewBox="0 0 72 92" aria-hidden="true" data-m="#8e9b8a" data-c="#1b1b1f"></svg>
           <div><h3>Spin, aber nicht hart</h3>
-            <div class="pair"><div><small>Längs</small><i style="background:#7fe0c3"></i>Yonex Poly Tour Rev</div><div><small>Quer</small><i style="background:#1b1b1f"></i>Head Velocity MLT</div></div>
-            <p>Für alle, die viel Spin wollen, aber eine reine Poly zu bretthart finden.</p></div>
+            <div class="pair"><div><small>Längs</small><i style="background:#8e9b8a"></i>Grapplesnake Tour M8</div><div><small>Quer</small><i style="background:#1b1b1f"></i>Head Velocity MLT</div></div>
+            <p>Die 8-kantige M8 bringt den Spin, die weiche Multifilament quer den Komfort. Für alle, denen eine reine Poly zu bretthart ist.</p></div>
         </article>
         <article class="hy">
           <svg class="bed" viewBox="0 0 72 92" aria-hidden="true" data-m="#a9b0b8" data-c="#19b5ff"></svg>
@@ -325,16 +335,16 @@ body.personal h1 { font-size: clamp(2.2rem, 8vw, 3.6rem); }
             <p>Weiches Spielgefühl und Power. Die Poly in den Quersaiten macht die Besaitung haltbarer als eine reine Multifilament.</p></div>
         </article>
         <article class="hy">
-          <svg class="bed" viewBox="0 0 72 92" aria-hidden="true" data-m="#ff3fa4" data-c="#19b5ff"></svg>
-          <div><h3>Spin mit Kontrolle</h3>
-            <div class="pair"><div><small>Längs</small><i style="background:#ff3fa4"></i>Solinco Confidential Soft</div><div><small>Quer</small><i style="background:#19b5ff"></i>Toroline Wasabi X</div></div>
-            <p>Viel Spin bei hoher Kontrolle, etwas weicher als eine reine Confidential-Soft-Besaitung. Für lange, schnelle Schwünge.</p></div>
+          <svg class="bed" viewBox="0 0 72 92" aria-hidden="true" data-m="#ff69b9" data-c="#19b5ff"></svg>
+          <div><h3>Spin mit viel Komfort</h3>
+            <div class="pair"><div><small>Längs</small><i style="background:#ff69b9"></i>Toroline Wasabi</div><div><small>Quer</small><i style="background:#19b5ff"></i>Toroline Wasabi X</div></div>
+            <p>Die 4-eckige Wasabi greift den Ball, die glatte Wasabi X quer lässt sie zurückschnappen. Beide sind weich: viel Spin für Hobbyspieler, ohne harte Poly.</p></div>
         </article>
         <article class="hy">
           <svg class="bed" viewBox="0 0 72 92" aria-hidden="true" data-m="#2f7de1" data-c="#19b5ff"></svg>
           <div><h3>Power mit Spin</h3>
             <div class="pair"><div><small>Längs</small><i style="background:#2f7de1"></i>Solinco Mach-10</div><div><small>Quer</small><i style="background:#19b5ff"></i>Toroline Wasabi X</div></div>
-            <p>Die kraftvolle Mach-10 längs, die glatte Wasabi X quer: viel Tempo und Spin, dabei angenehm im Arm. Ein guter Einstieg in Poly-Hybride.</p></div>
+            <p>Die kraftvolle 5-eckige Mach-10 längs, die glatte Wasabi X quer: viel Tempo und Spin, dabei angenehm im Arm. Ein guter Einstieg in Poly-Hybride.</p></div>
         </article>
       </div>
     </section>
@@ -380,7 +390,7 @@ body.personal h1 { font-size: clamp(2.2rem, 8vw, 3.6rem); }
         <p>Diese Seite setzt keine Cookies, nutzt kein Tracking und lädt keine Inhalte von Drittanbietern. Schriftarten liegen auf demselben Server wie die Seite. Der Hosting-Anbieter speichert beim Aufruf technisch notwendige Daten (z. B. IP-Adresse, Zeitpunkt, Browser) in Server-Logfiles, um die Seite sicher auszuliefern (Art. 6 Abs. 1 lit. f DSGVO).</p>
         <p>Hosting: GitHub Inc., 88 Colin P. Kelly Jr. St., San Francisco, CA 94107, USA (GitHub Pages). Dabei können Daten in die USA übermittelt werden. GitHub nimmt am EU-US Data Privacy Framework teil; die Übermittlung stützt sich auf den Angemessenheitsbeschluss der EU-Kommission (Art. 45 DSGVO).</p>
         <h3>Kontaktaufnahme</h3>
-        <p>Wenn du mich per WhatsApp kontaktierst, verwende ich deine Angaben nur, um deinen Auftrag zu bearbeiten (Art. 6 Abs. 1 lit. b DSGVO). Bei WhatsApp gelten zusätzlich die Datenschutzbestimmungen von WhatsApp/Meta. Ich lösche deine Daten, wenn sie dafür nicht mehr gebraucht werden und keine gesetzlichen Aufbewahrungspflichten bestehen.</p>
+        <p>Wenn du mich per WhatsApp kontaktierst, verwende ich deine Angaben nur, um deinen Auftrag zu bearbeiten (Art. 6 Abs. 1 lit. b DSGVO). Für die Auftragsverwaltung speichere ich Name, WhatsApp-Nummer, Schläger und Besaitungsdaten in einem nicht öffentlichen Speicher bei GitHub (Anbieter siehe oben). Öffentlich auf dieser Seite erscheinen nur Aufklebernummer, Schläger, Saite, Spannung und Datum – ohne Namen. Bei WhatsApp gelten zusätzlich die Datenschutzbestimmungen von WhatsApp/Meta. Ich lösche deine Daten, wenn sie dafür nicht mehr gebraucht werden und keine gesetzlichen Aufbewahrungspflichten bestehen.</p>
         <h3>Deine Rechte</h3>
         <p>Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Außerdem kannst du dich bei einer Datenschutz-Aufsichtsbehörde beschweren, in NRW bei der LDI NRW.</p>
       </details>
@@ -391,6 +401,18 @@ body.personal h1 { font-size: clamp(2.2rem, 8vw, 3.6rem); }
 </main>
 
 <script>
+
+// ---- Saitenbestand (Ampel) aus bestand.json, wird von der Verwaltung erzeugt ----
+fetch('bestand.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+  if (!d || !d.strings) return;
+  var L = { ok: 'Auf Lager', low: 'Nur noch wenig', out: 'Ausverkauft' };
+  document.querySelectorAll('.str h4').forEach(function (h) {
+    var name = h.childNodes[1] && h.childNodes[1].textContent.trim(); var st = d.strings[name];
+    if (!st || !L[st]) return;
+    var em = document.createElement('em'); em.className = 'stock ' + st; em.textContent = L[st];
+    h.insertBefore(em, h.querySelector('span'));
+  });
+}).catch(function () {});
 
 // ---- Personal view: sticker number from ?s=017 (QR code) or #s017 ----
 (function () {
