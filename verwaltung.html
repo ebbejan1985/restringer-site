@@ -714,7 +714,8 @@ function reelDialog(s) {
   openDlg(`<form><div class="dh"><h2>Rolle nachgekauft</h2><button type="button" class="x" data-close aria-label="Schließen">×</button></div><div class="db">
     <div class="note"><i class="sw" style="--c:${esc(s.color)}"></i><b>${esc(s.name)}</b> · aktuell ${s.meters == null ? 'unbekannt' : kg(s.meters) + ' m'}</div>
     <div class="grid2"><label class="f"><span>Meter dazu</span><input id="n-m" inputmode="decimal" value="${kg(s.reelLength || 200)}" required></label><label class="f"><span>Preis (€)</span><input id="n-p" inputmode="decimal" value="${s.reelPrice == null ? '' : kg(s.reelPrice)}"></label></div>
-    <label class="f"><span>Gekauft am</span><input type="date" id="n-d" value="${iso()}"></label>
+    <label class="f"><span>Gekauft am (auch früheres Datum möglich)</span><input type="date" id="n-d" value="${iso()}"></label>
+    <p class="small muted" style="margin:0">Nur den Rest einer alten Rolle erfassen? Dann besser den Button „Bestand“ nehmen.</p>
     <label class="chk"><input type="checkbox" id="n-exp" checked> Als Ausgabe eintragen</label></div>
     <div class="df"><div class="r"><button type="button" class="btn" data-close>Abbrechen</button><button class="btn p" type="submit">Hinzufügen</button></div></div></form>`, () => {
     const m = num($('#n-m').value), p = num($('#n-p').value); if (!m) return;
