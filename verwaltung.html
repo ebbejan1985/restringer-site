@@ -234,7 +234,7 @@ function demoDB() {
   db.jobs.push({ id: uid(), customerId: c1.id, rackId: r1_.id, sticker: '001', mainId: s('Solinco Mach-10'), crossId: s('Toroline Wasabi X'), tMain: 23, tCross: 22, price: 22, status: 'abgeholt', paid: true, payMethod: 'Bar', paidDate: d(110), received: d(112), doneDate: d(111), note: '', deducted: {} });
   db.jobs.push({ id: uid(), customerId: c2.id, rackId: r2.id, sticker: '002', mainId: s('Grapplesnake Tour M8'), crossId: '', tMain: 22, tCross: 22, price: 22, status: 'fertig', paid: false, payMethod: '', paidDate: '', received: d(2), doneDate: d(1), note: '', deducted: {} });
   db.jobs.push({ id: uid(), customerId: c1.id, rackId: r1_.id, sticker: '001', mainId: s('Toroline Wasabi'), crossId: s('Toroline Wasabi X'), tMain: 23, tCross: 22, price: 22, status: 'angenommen', paid: false, payMethod: '', paidDate: '', received: d(0), doneDate: '', note: 'Griffband neu', deducted: {} });
-  DB = db; db.jobs.forEach(applyUsage);
+  DB = db; migrateStrings(db); db.jobs.forEach(applyUsage);
   db.expenses.push({ id: uid(), date: d(40), desc: 'Aufkleberfolie A4', cat: 'Aufkleber/Druck', amount: 12.99, receipt: true });
   return db;
 }
@@ -243,8 +243,9 @@ const custById = id => DB.customers.find(c => c.id === id);
 const rackById = id => DB.rackets.find(r => r.id === id);
 const strName = id => (strById(id) || {}).name || '–';
 const isHybrid = j => j.crossId && j.crossId !== j.mainId;
-function setupText(j) { return isHybrid(j) ? `${strName(j.mainId)} / ${strName(j.crossId)} · ${kg(j.tMain)}/${kg(j.tCross)} kg` : `${strName(j.mainId)} · ${kg(j.tMain)}${j.tCross != null && j.tCross !== j.tMain ? '/' + kg(j.tCross) : ''} kg`; }
-function swatch(id) { const s = strById(id); return s ? `<i class="sw" style="--c:${esc(s.color)}"></i>` : ''; }
+function hsetParts(j) { const s = strById(j.mainId); if (!s || !s.hset) return null; return j.swap ? [s.b, s.a] : [s.a, s.b]; }
+function setupText(j) { const hp = hsetParts(j); if (hp) return `${strName(j.mainId)}: ${hp[0]} längs / ${hp[1]} quer · ${kg(j.tMain)}${j.tCross != null && j.tCross !== j.tMain ? '/' + kg(j.tCross) : ''} kg`; return isHybrid(j) ? `${strName(j.mainId)} / ${strName(j.crossId)} · ${kg(j.tMain)}/${kg(j.tCross)} kg` : `${strName(j.mainId)} · ${kg(j.tMain)}${j.tCross != null && j.tCross !== j.tMain ? '/' + kg(j.tCross) : ''} kg`; }
+function swatch(id) { const s = strById(id); if (!s) return ''; if (s.hset) return `<i class="sw" style="--c:${esc(s.ac || s.color)}"></i><i class="sw" style="--c:${esc(s.bc || s.color)}"></i>`; return `<i class="sw" style="--c:${esc(s.color)}"></i>`; }
 
 // String usage per job; booked against the stock once a job is finished.
 function usage(j) {
@@ -337,12 +338,30 @@ function buildCSVOld() {
 }
 function buildStock() {
   const o = {}; DB.strings.forEach(s => { const k = stock(s); if (k) o[s.name] = k; });
-  return JSON.stringify({ strings: o }, null, 1) + '\n';
+  const catalog = DB.strings.filter(s => s.active && s.web !== false).sort((a, b) => (a.pos ?? 50) - (b.pos ?? 50)).map(s => ({
+    name: s.name, art: s.art, color: s.color, colorName: s.colorName || '', profile: s.profile || '', desc: s.desc || '', chips: (s.chips || []).slice(0, 3), pos: s.pos ?? 50,
+    onlyCross: !!s.onlyCross, hset: !!s.hset, a: s.a || '', b: s.b || '', ac: s.ac || '', bc: s.bc || '', status: stock(s) }));
+  return JSON.stringify({ strings: o, catalog }, null, 1) + '\n';
 }
 
 // Takes over stickers already listed in the public data.csv (before the Verwaltung existed).
 const strKey = t => String(t || '').toLowerCase().replace(/[\d.,]+\s*(mm)?/g, '').replace(/[^a-z]/g, '');
 function findStr(t) { const k = strKey(t); if (!k) return null; return DB.strings.find(s => strKey(s.name) === k) || DB.strings.find(s => strKey(s.name).includes(k) || k.includes(strKey(s.name))) || null; }
+// Texte für die öffentliche Saitenliste (Startwerte; in der Verwaltung änderbar).
+const INFO = {"Solinco Mach-10": {"profile": "5-eckig", "desc": "Die kraftvollste Poly in der Liste: Der Ball fliegt mit wenig Aufwand schnell und tief ins Feld, das Gefühl ist für eine Poly weich. Gut für alle, die von Multifilament auf Poly umsteigen.", "chips": ["Power", "Komfort", "Hält Spannung"], "pos": 8}, "Yonex Poly Tour Pro": {"profile": "rund", "desc": "Die unkomplizierteste Poly: rund, weich und angenehm, aber mit wenig Spin. Für Spieler, die nicht extrem hart schlagen. Verliert etwas schneller Spannung als die anderen.", "chips": ["Komfort", "Gefühl", "Einsteiger"], "pos": 18}, "Toroline Wasabi": {"profile": "4-eckig", "desc": "Die Spin-Saite für weiche Hände: Die Kanten greifen den Ball stark, trotzdem bleibt sie armfreundlich. Etwas weniger Kontrolle als die Kontroll-Polys weiter unten.", "chips": ["Spin", "Komfort", "Lebendig"], "pos": 28}, "Grapplesnake Tour M8": {"profile": "8-eckig", "desc": "Acht Kanten greifen den Ball: viel Spin, dazu sehr gutes Ballgefühl und Kontrolle. Hält die Spannung besonders lange und funktioniert auch bei niedriger Spannung gut. Ideal, wenn du selten neu besaiten lässt.", "chips": ["Spin", "Gefühl", "Hält Spannung"], "pos": 42}, "Solinco Confidential Soft": {"profile": "5-eckig", "desc": "Spin und Kontrolle zugleich: greift den Ball stark, bleibt aber kontrolliert. Weicher als klassische Kontroll-Polys. Für lange, schnelle Schwünge.", "chips": ["Spin", "Kontrolle", "Schnelle Schwünge"], "pos": 62}, "Yonex Poly Tour Rev": {"profile": "8-eckig", "desc": "Gedämpftes Gefühl, viel Kontrolle und Spin, dazu sehr haltbar. Bringt kaum eigene Power, du musst das Tempo selbst machen.", "chips": ["Kontrolle", "Spin", "Haltbar"], "pos": 72}, "Grapplesnake Tour Sniper": {"profile": "5-eckig", "desc": "Die kontrollierteste Saite der Liste: sehr wenig Power, mittelfest. Der Ball bleibt auch bei vollem Schwung im Feld. Nur für kräftige Spieler.", "chips": ["Kontrolle", "Präzision", "Spin"], "pos": 100}, "Solinco X-Natural": {"profile": "rund", "desc": "Die weichste Saite der Liste, fühlt sich fast wie Naturdarm an. Viel Power und Komfort, erste Wahl bei Arm- oder Ellenbogenproblemen.", "chips": ["Komfort", "Power", "Armschonend"], "pos": 0}, "Head Velocity MLT": {"profile": "rund", "desc": "Weich, aber etwas kontrollierter als die X-Natural. Die glatte Beschichtung bringt mehr Spin, als man von einer Multifilament erwartet.", "chips": ["Komfort", "Kontrolle", "Spin"], "pos": 100}, "Toroline Wasabi X": {"profile": "glatt", "desc": "Glatt und reibungsarm: Die profilierten Längssaiten gleiten über sie hinweg und schnappen schnell zurück, das bringt Spin. Dazu spielt sie sich komfortabel und lebendig. Gibt es nur als Quersaite im Hybrid.", "chips": ["Snapback", "Komfort", "Nur Hybrid"], "pos": 50}, "Babolat RPM Soft": {"profile": "", "desc": "Die weichste Mono-Saite im Sortiment: viel Power und Komfort, angenehm für den Arm. Gut für Umsteiger von Multifilament. Verliert schneller an Spin und Spannung als klassische Polys.", "chips": ["Komfort", "Power", "Armschonend"], "pos": 0}, "MSV Co Ultra": {"profile": "rund", "desc": "Runde Co-Poly mit glatter Beschichtung: schnappt schnell zurück, bringt viel Spin und gute Kontrolle bei entschlossenen Schlägen. Mittelfest, lässt nach einigen Spielstunden spürbar nach.", "chips": ["Spin", "Kontrolle", "Snapback"], "pos": 48}, "Toroline O-Toro": {"profile": "profiliert", "desc": "Elastisch und eher gedämpft, mit viel Spin und guter Kontrolle. Eine ausgewogene Spin-Poly für Spieler, die Gefühl und Biss wollen.", "chips": ["Spin", "Gefühl", "Kontrolle"], "pos": 55}, "Toroline Caviar": {"profile": "6-eckig", "desc": "Eine der kontrolliertesten Toroline-Saiten: sechs Kanten, glatte Oberfläche, sehr präzise Flugbahn bei vollen Schlägen. Fest, aber mit verbundenem Gefühl. Für kräftige Topspin-Spieler.", "chips": ["Kontrolle", "Spin", "Präzision"], "pos": 80}, "Head Lynx Tour": {"profile": "6-eckig", "desc": "Kontroll- und Spin-Saite für lange, schnelle Schwünge: sechs Kanten, glatte Oberfläche, sehr haltbar und spannungsstabil. Bringt wenig eigene Power mit.", "chips": ["Kontrolle", "Spin", "Haltbar"], "pos": 86}, "Solinco Confidential": {"profile": "profiliert", "desc": "Das feste Original der Confidential Soft: maximale Kontrolle und viel Spin, hält die Spannung sehr lange. Wenig Power und eher hart – für kräftige Spieler.", "chips": ["Kontrolle", "Spin", "Hält Spannung"], "pos": 93}, "Solinco Hyper-Con (Hybrid-Set)": {"profile": "", "hset": true, "a": "Confidential", "ac": "#6b7280", "b": "Hyper-G Rough", "bc": "#3fb54a", "desc": "Fertiges Poly-Hybrid von Solinco für schnelle Topspin-Spieler. Standard: Confidential längs für maximale Kontrolle und Ballgriff. Getauscht: Hyper-G Rough längs für mehr Power und ein weicheres Gefühl.", "chips": ["Kontrolle", "Spin", "Tauschbar"]}, "Solinco Hyper-Mach BD (Hybrid-Set)": {"profile": "", "hset": true, "a": "Hyper-G Round", "ac": "#3fb54a", "b": "Mach-10", "bc": "#2f7de1", "desc": "Fertiges Hybrid aus Mach-10 und Hyper-G Round: lebendig, kraftvoll und für eine Poly-Kombi sehr komfortabel. Standard: Hyper-G Round längs für einen tieferen, kontrollierten Ball. Getauscht: Mach-10 längs, Hyper-G Round quer für mehr Spin.", "chips": ["Power", "Spin", "Tauschbar"]}};
+const RENAME = { solincoconfidental: 'Solinco Confidential', torolinecavair: 'Toroline Caviar', solincohyperbraindeadhybrid: 'Solinco Hyper-Mach BD (Hybrid-Set)', solincohyperconhybrid: 'Solinco Hyper-Con (Hybrid-Set)' };
+let MIGRATED = false;
+function migrateStrings(db) {
+  const byKey = {}; Object.entries(INFO).forEach(([n, v]) => byKey[strKey(n)] = v);
+  db.strings.forEach(s => {
+    const rk = strKey(s.name); if (RENAME[rk]) { s.name = RENAME[rk]; MIGRATED = true; }
+    if (s.infoV) return;
+    const i = byKey[strKey(s.name)] || {};
+    s.profile = i.profile || ''; s.desc = i.desc || ''; s.chips = (i.chips || []).slice(0, 3); s.pos = i.pos ?? 50; s.web = true;
+    if (i.hset) Object.assign(s, { hset: true, a: i.a, b: i.b, ac: i.ac, bc: i.bc });
+    s.infoV = 1; MIGRATED = true;
+  });
+}
 function importPublicCSV(text) {
   if (!text) return 0; let n = 0; const find = findStr;
   text.split(/\r?\n/).forEach(line => {
@@ -417,7 +436,7 @@ async function loadRemote() {
   for (const p of ['data.csv', 'bestand.json']) { try { LAST[p] = await ghGet(CFG.pubRepo, p); } catch (e) { } }
   const t = await ghGet(CFG.privRepo, 'db.json');
   if (t == null) return false;
-  DB = JSON.parse(t); saveLocal();
+  DB = JSON.parse(t); migrateStrings(DB); saveLocal();
   return true;
 }
 
@@ -538,14 +557,14 @@ function customerDetail(id) {
 
 VIEWS.saiten = () => {
   const st = DB.settings;
-  const groups = [['Polyester', s => s.art === 'Polyester'], ['Multifilament', s => s.art !== 'Polyester']];
+  const groups = [['Polyester', s => s.art === 'Polyester' && !s.hset], ['Multifilament & andere', s => s.art !== 'Polyester' && !s.hset], ['Hybrid-Sets', s => s.hset]].filter(([, fn]) => DB.strings.some(fn));
   return `<div class="head"><h1>Saiten & Bestand</h1><button class="btn p" data-act="newstring">+ Neue Saite</button></div>
   <div class="note small">Beim Status „Fertig“ wird automatisch abgebucht: ${kg(st.mFull)} m pro Vollbesaitung, beim Hybrid ${kg(st.mMain)} m längs und ${kg(st.mCross)} m quer. Die Ampel erscheint so auch auf deiner Website.</div>
   ${groups.map(([g, fn]) => { const list = DB.strings.filter(fn); return `<section class="card"><div class="ch"><h2>${g}</h2><span class="chip">${list.length}</span></div><ul class="rows">${list.map(s => {
     const k = stock(s); const tm = totalM(s); const pct = !known(s) ? 0 : Math.max(3, Math.min(100, tm / Math.max(s.reelLength || 0, tm, 100) * 100));
     const beds = !known(s) ? '' : s.onlyCross ? ` · reicht für ca. ${Math.max(0, Math.floor(tm / st.mCross))} Hybride` : ` · ca. ${Math.max(0, (s.sets || 0) + Math.floor((s.halfs || 0) / 2) + Math.floor(Math.max(0, s.meters || 0) / st.mFull))} Vollbesaitungen`;
     const cost = s.reelPrice && s.reelLength ? ` · ${eur(s.reelPrice / s.reelLength * (s.onlyCross ? st.mCross : st.mFull))} Saitenkosten pro ${s.onlyCross ? 'Hybrid-Hälfte' : 'Besaitung'}` : '';
-    return `<li class="row click${s.active ? '' : ' muted'}" data-act="string" data-id="${s.id}"><div><div class="t"><i class="sw" style="--c:${esc(s.color)}"></i>${esc(s.name)}${s.onlyCross ? ' <span class="chip">Nur Quersaite</span>' : ''}${s.active ? '' : ' <span class="chip">Nicht im Angebot</span>'}</div>
+    return `<li class="row click${s.active ? '' : ' muted'}" data-act="string" data-id="${s.id}"><div><div class="t">${swatch(s.id)}${esc(s.name)}${s.onlyCross ? ' <span class="chip">Nur Quersaite</span>' : ''}${s.hset ? ` <span class="chip">${esc(s.a)} + ${esc(s.b)}</span>` : ''}${s.web === false ? ' <span class="chip">nicht auf Website</span>' : ''}${s.active ? '' : ' <span class="chip">Nicht im Angebot</span>'}</div>
       <div class="s"><span class="mono">${esc(stockText(s))}</span>${esc(beds)}${esc(cost)}</div>${!known(s) ? '' : `<div class="meter ${k || ''}"><i style="width:${pct}%"></i></div>`}</div>
       <div class="acts">${stockChip(s)}<button class="btn sm" data-act="setstock" data-id="${s.id}">Bestand</button><button class="btn sm" data-act="reel" data-id="${s.id}">+ Nachkauf</button></div></li>`; }).join('')}</ul></section>`; }).join('')}`;
 };
@@ -641,7 +660,8 @@ function jobDialog(job, preset = {}) {
     <fieldset><legend>Besaitung</legend>
       <div id="j-last"></div>
       <label class="f"><span>Saite längs</span><select id="j-main"><option value="">– wählen –</option>${stringOptions(j.mainId, false)}</select></label>
-      <label class="chk"><input type="checkbox" id="j-hyb" ${isHybrid(j) ? 'checked' : ''}> Hybrid (andere Quersaite)</label>
+      <div id="j-swapf" hidden><div class="seg"><label><input type="radio" name="j-swap" value="0" ${j.swap ? '' : 'checked'}><span id="j-sw0">Standard</span></label><label><input type="radio" name="j-swap" value="1" ${j.swap ? 'checked' : ''}><span id="j-sw1">Getauscht</span></label></div></div>
+      <label class="chk" id="j-hybf"><input type="checkbox" id="j-hyb" ${isHybrid(j) ? 'checked' : ''}> Hybrid (andere Quersaite)</label>
       <label class="f" id="j-crossf" ${isHybrid(j) ? '' : 'hidden'}><span>Saite quer</span><select id="j-cross"><option value="">– wählen –</option>${stringOptions(j.crossId, true)}</select></label>
       <div class="grid2"><label class="f"><span>Spannung längs (kg)</span><input id="j-tm" inputmode="decimal" value="${kg(j.tMain ?? '')}" required></label><label class="f"><span>Spannung quer (kg)</span><input id="j-tc" inputmode="decimal" value="${kg(j.tCross ?? '')}" placeholder="wie längs"></label></div>
       <div id="j-stock"></div>
@@ -667,7 +687,7 @@ function jobDialog(job, preset = {}) {
     $('#j-newrack').hidden = rack.value !== '__new';
     const last = rack.value && rack.value !== '__new' ? lastJobOfRacket(rack.value) : null;
     const box = $('#j-last');
-    if (last && last.id !== j.id) { box.innerHTML = `<div class="note small">Letztes Mal: ${swatch(last.mainId)}${isHybrid(last) ? swatch(last.crossId) : ''}${esc(setupText(last))} · ${fmtD(last.doneDate || last.received)} <button type="button" class="btn sm" id="j-same" style="margin-left:.4rem">Übernehmen</button></div>`; $('#j-same').onclick = () => { $('#j-main').value = last.mainId; $('#j-hyb').checked = isHybrid(last); $('#j-crossf').hidden = !isHybrid(last); $('#j-cross').value = last.crossId || ''; $('#j-tm').value = kg(last.tMain); $('#j-tc').value = kg(last.tCross); checkStock(); }; }
+    if (last && last.id !== j.id) { box.innerHTML = `<div class="note small">Letztes Mal: ${swatch(last.mainId)}${isHybrid(last) ? swatch(last.crossId) : ''}${esc(setupText(last))} · ${fmtD(last.doneDate || last.received)} <button type="button" class="btn sm" id="j-same" style="margin-left:.4rem">Übernehmen</button></div>`; $('#j-same').onclick = () => { $('#j-main').value = last.mainId; hsetUI(); const sr = $$('input[name="j-swap"]'); if (sr.length) sr[last.swap ? 1 : 0].checked = true; $('#j-hyb').checked = isHybrid(last); $('#j-crossf').hidden = !isHybrid(last); $('#j-cross').value = last.crossId || ''; $('#j-tm').value = kg(last.tMain); $('#j-tc').value = kg(last.tCross); checkStock(); }; }
     else box.innerHTML = '';
   }
   function checkStock() {
@@ -678,13 +698,18 @@ function jobDialog(job, preset = {}) {
   }
   cust.onchange = fillRacks; rack.onchange = fillRackFields;
   $('#j-hyb').onchange = () => { $('#j-crossf').hidden = !$('#j-hyb').checked; checkStock(); };
-  $('#j-main').onchange = checkStock; $('#j-cross').onchange = checkStock;
+  function hsetUI() {
+    const s = strById($('#j-main').value), hs = !!(s && s.hset);
+    $('#j-swapf').hidden = !hs; $('#j-hybf').hidden = hs;
+    if (hs) { $('#j-hyb').checked = false; $('#j-crossf').hidden = true; $('#j-sw0').textContent = `${s.a} längs / ${s.b} quer`; $('#j-sw1').textContent = `${s.b} längs / ${s.a} quer`; }
+  }
+  $('#j-main').onchange = () => { hsetUI(); checkStock(); }; $('#j-cross').onchange = checkStock;
   $('#j-paid').onchange = () => { if ($('#j-paid').checked && !$('#j-pd').value) $('#j-pd').value = iso(); if ($('#j-paid').checked && !$('#j-pm').value) $('#j-pm').value = 'Bar'; };
   $$('input[name="j-st"]').forEach(r => r.onchange = () => { if (r.value !== 'angenommen' && !$('#j-done').value) $('#j-done').value = iso(); });
   if ($('#j-del')) $('#j-del').onclick = () => { if ($('#j-del').dataset.sure) { const i = DB.jobs.findIndex(x => x.id === j.id); if (i > -1) { const old = DB.jobs[i]; old.status = 'angenommen'; applyUsage(old); DB.jobs.splice(i, 1); } dlg.close(); commit('Auftrag gelöscht'); toast('Auftrag gelöscht'); } else { $('#j-del').dataset.sure = 1; $('#j-del').textContent = 'Wirklich löschen?'; } };
   if ($('#j-rcpt')) $('#j-rcpt').onclick = () => receipt(job);
   if ($('#j-lbl')) $('#j-lbl').onclick = () => labelDialog(job);
-  fillRacks();
+  fillRacks(); hsetUI();
   const q = preset.req;
   if (q) {
     const r = q.sticker ? DB.rackets.find(x => x.sticker === pad3(q.sticker)) : null;
@@ -701,7 +726,7 @@ function jobDialog(job, preset = {}) {
     if (q.tCross != null) $('#j-tc').value = kg(q.tCross);
     if (q.note) $('#j-note').value = q.note;
   }
-  checkStock();
+  hsetUI(); checkStock();
 }
 function saveJob(j, isNew) {
   const msg = t => { $('#j-stock').innerHTML = `<div class="note bad">${esc(t)}</div>`; };
@@ -711,13 +736,14 @@ function saveJob(j, isNew) {
   let rid = $('#j-rack').value;
   if (rid === '__new' || !rid) { const model = $('#j-rmodel').value.trim(); if (!model) return msg('Bitte das Schlägermodell eintragen.'); const st = pad3($('#j-rsticker').value); if (st && DB.rackets.some(r => r.sticker === st)) return msg(`Schläger-Nr. ${st} ist schon vergeben.`); const r = { id: uid(), customerId: cid, model, sticker: st, pattern: $('#j-rpattern').value.trim(), note: '' }; DB.rackets.push(r); rid = r.id; }
   const mainId = $('#j-main').value; if (!mainId) return msg('Bitte die Saite längs wählen.');
-  const hy = $('#j-hyb').checked; const crossId = hy ? $('#j-cross').value : ''; if (hy && !crossId) return msg('Bitte die Quersaite wählen.');
+  const isSet = !!strById(mainId).hset; const swap = isSet && (($('input[name="j-swap"]:checked') || {}).value === '1');
+  const hy = !isSet && $('#j-hyb').checked; const crossId = hy ? $('#j-cross').value : ''; if (hy && !crossId) return msg('Bitte die Quersaite wählen.');
   if (strById(mainId).onlyCross) return msg(`${strName(mainId)} gibt es nur als Quersaite.`);
   const tMain = num($('#j-tm').value); if (tMain == null) return msg('Bitte die Spannung eintragen.');
   const tc = num($('#j-tc').value);
   const status = ($('input[name="j-st"]:checked') || {}).value || 'angenommen';
   const target = isNew ? j : DB.jobs.find(x => x.id === j.id);
-  Object.assign(target, { customerId: cid, rackId: rid, sticker: rackById(rid).sticker, mainId, crossId, tMain, tCross: tc == null ? tMain : tc, status,
+  Object.assign(target, { customerId: cid, rackId: rid, sticker: rackById(rid).sticker, mainId, crossId, swap, tMain, tCross: tc == null ? tMain : tc, status,
     received: $('#j-rec').value || iso(), doneDate: status === 'angenommen' ? '' : ($('#j-done').value || iso()), price: num($('#j-price').value) ?? DB.settings.price,
     payMethod: $('#j-pm').value, paid: $('#j-paid').checked, paidDate: $('#j-paid').checked ? ($('#j-pd').value || iso()) : '', note: $('#j-note').value.trim() });
   if (isNew) DB.jobs.push(target);
@@ -765,17 +791,33 @@ function rackDialog(r, custId) {
 function stringDialog(s) {
   const isNew = !s; s = s || S('', 'Polyester', '#888888', '', null);
   openDlg(`<form><div class="dh"><h2>${isNew ? 'Neue Saite' : esc(s.name)}</h2><button type="button" class="x" data-close aria-label="Schließen">×</button></div><div class="db">
-    <label class="f"><span>Name (genau wie auf der Website)</span><input id="s-name" value="${esc(s.name)}" required></label>
+    <label class="f"><span>Name</span><input id="s-name" value="${esc(s.name)}" required></label>
     <div class="grid2"><label class="f"><span>Art</span><select id="s-art">${opt('Polyester', 'Polyester', s.art)}${opt('Multifilament', 'Multifilament', s.art)}${opt('Kunstdarm', 'Kunstdarm', s.art)}${opt('Naturdarm', 'Naturdarm', s.art)}</select></label>
     <label class="f"><span>Farbe</span><div style="display:flex;gap:.5rem"><input type="color" id="s-color" value="${esc(s.color)}" style="width:3.2rem;padding:.2rem" aria-label="Farbe wählen"><input id="s-cname" value="${esc(s.colorName)}" placeholder="z. B. Pink" aria-label="Farbname"></div></label></div>
     <div class="grid2"><label class="f"><span>Warnen unter (m)</span><input id="s-min" inputmode="decimal" value="${s.min == null ? '' : kg(s.min)}" placeholder="automatisch"></label></div>
     <div class="grid2"><label class="f"><span>Rollenlänge (m)</span><input id="s-rl" inputmode="decimal" value="${s.reelLength == null ? '' : kg(s.reelLength)}" placeholder="z. B. 200"></label><label class="f"><span>Rollenpreis (€)</span><input id="s-rp" inputmode="decimal" value="${s.reelPrice == null ? '' : kg(s.reelPrice)}"></label></div>
+    <fieldset><legend>Für die Website</legend>
+      <label class="chk"><input type="checkbox" id="s-web" ${s.web !== false ? 'checked' : ''}> Auf der Website zeigen</label>
+      <label class="f"><span>Profil</span><input id="s-prof" value="${esc(s.profile || '')}" placeholder="rund, 4-eckig, 5-eckig, glatt …"></label>
+      <label class="f"><span>Beschreibung für Kunden</span><textarea id="s-desc" rows="4">${esc(s.desc || '')}</textarea></label>
+      <label class="f"><span>Eigenschaften (bis zu 3, mit Komma; die erste wird hervorgehoben)</span><input id="s-chips" value="${esc((s.chips || []).join(', '))}" placeholder="Spin, Kontrolle, Komfort"></label>
+      <label class="f"><span>Einordnung: mehr Power ← → mehr Kontrolle</span><input type="range" id="s-pos" min="0" max="100" step="1" value="${s.pos ?? 50}" style="min-height:auto;padding:0"></label>
+    </fieldset>
     <label class="chk"><input type="checkbox" id="s-oc" ${s.onlyCross ? 'checked' : ''}> Nur als Quersaite im Hybrid</label>
+    <label class="chk"><input type="checkbox" id="s-hset" ${s.hset ? 'checked' : ''}> Fertiges Hybrid-Set (zwei Saiten in einer Packung, längs/quer tauschbar)</label>
+    <div class="grid2" id="s-hsetf" ${s.hset ? '' : 'hidden'}>
+      <label class="f"><span>Saite A (Standard: längs)</span><div style="display:flex;gap:.5rem"><input type="color" id="s-ac" value="${esc(s.ac || '#888888')}" style="width:3.2rem;padding:.2rem" aria-label="Farbe A"><input id="s-a" value="${esc(s.a || '')}" placeholder="z. B. Confidential"></div></label>
+      <label class="f"><span>Saite B (Standard: quer)</span><div style="display:flex;gap:.5rem"><input type="color" id="s-bc" value="${esc(s.bc || '#888888')}" style="width:3.2rem;padding:.2rem" aria-label="Farbe B"><input id="s-b" value="${esc(s.b || '')}" placeholder="z. B. Hyper-G Rough"></div></label>
+    </div>
     <label class="chk"><input type="checkbox" id="s-act" ${s.active ? 'checked' : ''}> Im Angebot</label></div>
     <div class="df"><div class="r"><button type="button" class="btn" data-close>Abbrechen</button><button class="btn p" type="submit">Speichern</button></div></div></form>`, () => {
-    Object.assign(s, { name: $('#s-name').value.trim(), art: $('#s-art').value, color: $('#s-color').value, colorName: $('#s-cname').value.trim(), min: num($('#s-min').value), reelLength: num($('#s-rl').value), reelPrice: num($('#s-rp').value), onlyCross: $('#s-oc').checked, active: $('#s-act').checked });
+    Object.assign(s, { name: $('#s-name').value.trim(), art: $('#s-art').value, color: $('#s-color').value, colorName: $('#s-cname').value.trim(), min: num($('#s-min').value), reelLength: num($('#s-rl').value), reelPrice: num($('#s-rp').value), onlyCross: $('#s-oc').checked, active: $('#s-act').checked,
+      web: $('#s-web').checked, profile: $('#s-prof').value.trim(), desc: $('#s-desc').value.trim(), chips: $('#s-chips').value.split(',').map(x => x.trim()).filter(Boolean).slice(0, 3), pos: +$('#s-pos').value,
+      hset: $('#s-hset').checked, a: $('#s-a').value.trim(), b: $('#s-b').value.trim(), ac: $('#s-ac').value, bc: $('#s-bc').value, infoV: 1 });
+    if (s.hset && (!s.a || !s.b)) { s.hset = false; toast('Hybrid-Set braucht Saite A und B – als normale Saite gespeichert'); }
     if (isNew) DB.strings.push(s); dlg.close(); commit('Saite gespeichert');
   });
+  $('#s-hset').onchange = () => { $('#s-hsetf').hidden = !$('#s-hset').checked; };
 }
 function reelDialog(s) {
   openDlg(`<form><div class="dh"><h2>Nachgekauft</h2><button type="button" class="x" data-close aria-label="Schließen">×</button></div><div class="db">
@@ -861,7 +903,8 @@ async function labelCanvas(j) {
   const PX = 20, H = 12 * PX, pad = 1.2 * PX;              // 20 px pro mm, 12 mm hoch
   const d = j.doneDate || iso(); const date = d.slice(8, 10) + '.' + d.slice(5, 7) + '.' + d.slice(2, 4);
   const ten = isHybrid(j) || (j.tCross != null && j.tCross !== j.tMain) ? `${kg(j.tMain)}/${kg(j.tCross)} kg` : `${kg(j.tMain)} kg`;
-  const strs = isHybrid(j) ? `${shortName(strName(j.mainId))} / ${shortName(strName(j.crossId))}` : shortName(strName(j.mainId));
+  const hp = hsetParts(j);
+  const strs = hp ? `${hp[0]} / ${hp[1]}` : isHybrid(j) ? `${shortName(strName(j.mainId))} / ${shortName(strName(j.crossId))}` : shortName(strName(j.mainId));
   const L = [{ t: `${date} · ${ten}`, f: '800 74px "Saira Condensed", "Arial Narrow", sans-serif' }, { t: strs, f: '600 64px "Saira Condensed", "Arial Narrow", sans-serif' }, { t: 'Restring-Service · WhatsApp 0152 55357583', f: '600 40px "Saira Condensed", "Arial Narrow", sans-serif' }];
   const c = document.createElement('canvas'), x = c.getContext('2d');
   const badge = 9.6 * PX; let w = 0; L.forEach(l => { x.font = l.f; w = Math.max(w, x.measureText(l.t).width); });
@@ -936,7 +979,7 @@ document.addEventListener('click', e => {
     reload: async () => { if (CFG.demo) return; setSync('busy', 'Lädt …'); try { await loadRemote(); setSync('ok', 'Aktuell ✓'); render(); } catch (err) { setSync('err', 'Fehler ⟳'); toast(err.message); } },
     logout: () => { if (!t.dataset.sure) { t.dataset.sure = 1; t.textContent = 'Wirklich abmelden?'; return; } if (CFG.demo) store(DEMO_KEY, null); store(CACHE_KEY, null); CFG.token = ''; CFG.demo = false; store(CFG_KEY, CFG); DB = null; location.hash = 'start'; setSync('', 'Abgemeldet'); render(); },
     demo: () => { CFG.demo = true; store(CFG_KEY, CFG); DB = store(DEMO_KEY) || demoDB(); saveLocal(); setSync('demo', 'Demo · nur lokal'); location.hash = 'start'; render(); },
-    create: async () => { DB = seedDB(); importPublicCSV(LAST['data.csv']); t.disabled = true; try { await pushAll('Verwaltung angelegt'); saveLocal(); setSync('ok', 'Gespeichert ✓'); location.hash = 'saiten'; render(); toast('Angelegt – bitte jetzt den Bestand eintragen'); } catch (err) { DB = null; t.disabled = false; $('#l-msg').innerHTML = `<div class="note bad">${esc(err.message)}</div>`; } }
+    create: async () => { DB = seedDB(); migrateStrings(DB); importPublicCSV(LAST['data.csv']); t.disabled = true; try { await pushAll('Verwaltung angelegt'); saveLocal(); setSync('ok', 'Gespeichert ✓'); location.hash = 'saiten'; render(); toast('Angelegt – bitte jetzt den Bestand eintragen'); } catch (err) { DB = null; t.disabled = false; $('#l-msg').innerHTML = `<div class="note bad">${esc(err.message)}</div>`; } }
   }[a] || (() => { }))();
 });
 document.addEventListener('input', e => { if (e.target.id === 'q') { QUERY = e.target.value; const pos = e.target.selectionStart; render(); const q = $('#q'); q.focus(); q.setSelectionRange(pos, pos); } });
@@ -962,17 +1005,17 @@ async function login() {
     store(CFG_KEY, CFG);
     const ok = await loadRemote();
     if (!ok) { m.innerHTML = `<div class="note ok">Verbunden. In „${esc(CFG.privRepo)}“ liegen noch keine Daten.</div><button class="btn p" type="button" data-act="create" style="margin-top:.6rem">Verwaltung jetzt anlegen</button>`; return; }
-    setSync('ok', 'Aktuell ✓'); location.hash = 'start'; render();
+    setSync('ok', 'Aktuell ✓'); location.hash = 'start'; render(); if (MIGRATED) { MIGRATED = false; commit('Saiten-Infos ergänzt'); }
   } catch (err) { m.innerHTML = `<div class="note bad">${esc(err.message)}</div>`; }
 }
 
 // ---------- start ----------
 (async function init() {
   VIEW = location.hash.slice(1) || 'start';
-  if (CFG.demo) { DB = store(DEMO_KEY) || demoDB(); setSync('demo', 'Demo · nur lokal'); render(); return; }
+  if (CFG.demo) { DB = store(DEMO_KEY) || demoDB(); migrateStrings(DB); setSync('demo', 'Demo · nur lokal'); render(); return; }
   if (!CFG.token) { setSync('', 'Nicht angemeldet'); render(); return; }
   DB = store(CACHE_KEY); render(); setSync('busy', 'Lädt …');
-  try { const ok = await loadRemote(); if (!ok) { DB = null; setSync('', 'Keine Daten'); } else setSync('ok', 'Aktuell ✓'); }
+  try { const ok = await loadRemote(); if (!ok) { DB = null; setSync('', 'Keine Daten'); } else { setSync('ok', 'Aktuell ✓'); if (MIGRATED) { MIGRATED = false; render(); commit('Saiten-Infos ergänzt'); } } }
   catch (e) { setSync('err', DB ? 'Offline – lokale Kopie' : 'Fehler'); toast(e.message); }
   render();
 })();

@@ -115,6 +115,8 @@ h2 { font-family: var(--display); font-weight: 800; text-transform: uppercase; f
 .xfeat .kicker { padding: 0 1.25rem; color: var(--muted); }
 .xfeat .str { border-bottom: 0; }
 .stock { display: inline-block; font-family: var(--mono); font-style: normal; font-weight: 500; font-size: .66rem; letter-spacing: .04em; padding: .12rem .45rem; border-radius: 999px; margin-left: .45rem; vertical-align: .12em; white-space: nowrap; color: var(--ink); }
+.pair2 { display: inline-flex; gap: .15rem; }
+.pair2 .sw { margin-right: 0; }
 .stock.ok { background: rgba(46, 160, 90, .18); }
 .stock.low { background: rgba(230, 160, 0, .26); }
 .stock.out { background: rgba(220, 60, 60, .22); }
@@ -443,16 +445,52 @@ body.personal h1 { font-size: clamp(2.2rem, 8vw, 3.6rem); }
 
 <script>
 
-// ---- Saitenbestand (Ampel) aus bestand.json, wird von der Verwaltung erzeugt ----
+// ---- Saitenliste + Ampel aus bestand.json (wird von der Verwaltung erzeugt) ----
 fetch('bestand.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
-  if (!d || !d.strings) return;
+  if (!d) return;
   var L = { ok: 'Auf Lager', low: 'Nur noch wenig', out: 'Ausverkauft' };
-  document.querySelectorAll('.str h4').forEach(function (h) {
-    var name = h.childNodes[1] && h.childNodes[1].textContent.trim(); var st = d.strings[name];
-    if (!st || !L[st]) return;
-    var em = document.createElement('em'); em.className = 'stock ' + st; em.textContent = L[st];
-    h.insertBefore(em, h.querySelector('span'));
-  });
+  if (!d.catalog || !d.catalog.length) { // ältere Datei: nur Ampel an die feste Liste hängen
+    if (!d.strings) return;
+    document.querySelectorAll('.str h4').forEach(function (h) {
+      var name = h.childNodes[1] && h.childNodes[1].textContent.trim(); var st = d.strings[name];
+      if (!st || !L[st]) return;
+      var em = document.createElement('em'); em.className = 'stock ' + st; em.textContent = L[st];
+      h.insertBefore(em, h.querySelector('span'));
+    });
+    return;
+  }
+  var esc = function (t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var col = function (c) { return /^#[0-9a-f]{3,8}$/i.test(c || '') ? c : '#888888'; };
+  var em = function (it) { return it.status && L[it.status] ? '<em class="stock ' + it.status + '">' + L[it.status] + '</em>' : ''; };
+  var chips = function (it) { return (it.chips || []).map(function (c, i) { return '<span class="chip' + (i === 0 ? ' k' : '') + '">' + esc(c) + '</span>'; }).join(''); };
+  var sub = function (it) { return [it.art === 'Polyester' ? 'Co-Poly' : it.art, it.profile, it.colorName].filter(Boolean).join(' · '); };
+  function row(it, scale) {
+    return '<div class="str"><div class="nm"><h4><i class="sw" style="--c:' + col(it.color) + '"></i>' + esc(it.name) + em(it) + '<span>' + esc(sub(it)) + '</span></h4>' +
+      (scale ? '<span class="pos" style="--p:' + Math.max(0, Math.min(100, +it.pos || 0)) + '%" title="Einordnung zwischen Power und Kontrolle"></span>' : '') +
+      '</div><p>' + esc(it.desc) + '</p><div class="chips">' + chips(it) + '</div></div>';
+  }
+  function setRow(it) {
+    return '<div class="str hsetrow"><div class="nm"><h4><i class="sw" style="--c:' + col(it.ac) + '"></i>' + esc(it.name) + em(it) + '<span>' + esc(it.a) + ' + ' + esc(it.b) + ' · längs/quer tauschbar</span></h4>' +
+      '<span class="pair2"><i class="sw" style="--c:' + col(it.ac) + '"></i><i class="sw" style="--c:' + col(it.bc) + '"></i></span></div><p>' + esc(it.desc) + '</p><div class="chips">' + chips(it) + '</div></div>';
+  }
+  var cat = d.catalog;
+  var poly = cat.filter(function (x) { return x.art === 'Polyester' && !x.onlyCross && !x.hset; });
+  var other = cat.filter(function (x) { return x.art !== 'Polyester' && !x.onlyCross && !x.hset; });
+  var sets = cat.filter(function (x) { return x.hset; });
+  var cross = cat.filter(function (x) { return x.onlyCross && !x.hset; });
+  function group(title, hint, list, scale, fn) {
+    if (!list.length) return '';
+    return '<div class="group"><div class="group-head"><h3>' + title + ' <small>' + list.length + (list.length === 1 ? ' Saite' : (fn === setRow ? ' Sets' : ' Saiten')) + '</small></h3><p>' + hint + '</p></div>' +
+      (scale ? '<div class="scale"><span>Mehr Power</span><i></i><span>Mehr Kontrolle</span></div>' : '') + list.map(function (it) { return (fn || row)(it, scale); }).join('') + '</div>';
+  }
+  var otherTitle = other.every(function (x) { return x.art === 'Multifilament'; }) ? 'Multifilament' : 'Multifilament & mehr';
+  var groups = document.querySelector('#saiten .groups');
+  if (groups) groups.innerHTML = group('Polyester', 'Haltbar, mit Spin und Kontrolle', poly, true) + group(otherTitle, 'Weich und armschonend', other, true) + group('Hybrid-Sets', 'Zwei Saiten in einer Packung – längs und quer tauschbar', sets, false, setRow);
+  var xf = document.querySelector('.xfeat');
+  if (xf) { if (cross.length) xf.innerHTML = '<p class="kicker">Standard-Quersaite für Poly-Hybride</p>' + cross.map(function (it) { return row(it, false); }).join(''); else xf.hidden = true; }
+  var intro = document.querySelector('#saiten .intro');
+  if (intro) intro.textContent = (poly.length + other.length) + ' Saiten zur Auswahl' + (sets.length ? ' und ' + sets.length + ' fertige Hybrid-Sets' : '') + ', alle zum gleichen Preis.' + (cross.length ? ' Dazu ' + cross.map(function (x) { return x.name.split(' ').slice(1).join(' ') || x.name; }).join(' und ') + ' als Quersaite für Hybride.' : '') + ' Unsicher, welche passt? Schreib mir, wie du spielst, dann empfehle ich dir eine.';
+  if (window.reqFillStrings) window.reqFillStrings();
 }).catch(function () {});
 
 // ---- Personal view: sticker number from ?s=017 (QR code) or #s017 ----
@@ -580,12 +618,17 @@ document.querySelectorAll('.copy').forEach(function (b) {
 (function () {
   var f = document.getElementById('reqform'); if (!f) return;
   var $ = function (id) { return document.getElementById(id); };
-  var names = [], crossOnly = [];
-  document.querySelectorAll('.str h4').forEach(function (h) { var n = h.childNodes[1] && h.childNodes[1].textContent.trim(); if (n && names.indexOf(n) < 0) { names.push(n); if (h.closest('.xfeat')) crossOnly.push(n); } });
-  function fill(sel, list, first) { sel.innerHTML = '<option value="">' + first + '</option>' + list.map(function (n) { return '<option>' + n.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</option>'; }).join(''); }
-  fill($('r-main'), names.filter(function (n) { return crossOnly.indexOf(n) < 0; }), 'Bitte beraten');
-  fill($('r-cross'), crossOnly.concat(names.filter(function (n) { return crossOnly.indexOf(n) < 0; })), 'Bitte beraten');
+  var names = [], crossOnly = [], setNames = [];
+  function fill(sel, list, first) { var v = sel.value; sel.innerHTML = '<option value="">' + first + '</option>' + list.map(function (n) { return '<option>' + n.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</option>'; }).join(''); if (list.indexOf(v) > -1) sel.value = v; }
+  window.reqFillStrings = function () {
+    names = []; crossOnly = []; setNames = [];
+    document.querySelectorAll('.str h4').forEach(function (h) { var n = h.childNodes[1] && h.childNodes[1].textContent.trim(); if (n && names.indexOf(n) < 0) { names.push(n); if (h.closest('.xfeat')) crossOnly.push(n); if (h.closest('.hsetrow')) setNames.push(n); } });
+    fill($('r-main'), names.filter(function (n) { return crossOnly.indexOf(n) < 0; }), 'Bitte beraten');
+    fill($('r-cross'), crossOnly.concat(names.filter(function (n) { return crossOnly.indexOf(n) < 0 && setNames.indexOf(n) < 0; })), 'Bitte beraten');
+  };
+  window.reqFillStrings();
   $('r-hyb').addEventListener('change', function () { $('r-crossf').hidden = !this.checked; });
+  $('r-main').addEventListener('change', function () { var isSet = setNames.indexOf(this.value) > -1; $('r-hyb').closest('label').hidden = isSet; if (isSet) { $('r-hyb').checked = false; $('r-crossf').hidden = true; } });
   $('r-advice').addEventListener('change', function () { $('r-tm').disabled = $('r-tc').disabled = this.checked; });
   window.reqPrefill = function (o) {
     if (o.model) $('r-model').value = o.model;
