@@ -214,7 +214,7 @@ function seedDB() {
       S('Toroline Wasabi', 'Polyester', '#ff69b9', 'Pink', null),
       S('Grapplesnake Tour M8', 'Polyester', '#8e9b8a', 'Grau-Grün', 200, { reelLength: 200 }),
       S('Solinco Confidential Soft', 'Polyester', '#ff3fa4', 'Electric Pink', null),
-      S('Yonex Poly Tour Rev', 'Polyester', '#7fe0c3', 'Mint', 24),
+      S('Yonex Poly Tour Rev', 'Polyester', '#7fe0c3', 'Mint', null, { sets: 2 }),
       S('Grapplesnake Tour Sniper', 'Polyester', '#a9b0b8', 'Silbergrau', null),
       S('Toroline Wasabi X', 'Polyester', '#19b5ff', 'Neon-Blau', 6.5, { onlyCross: true }),
       S('Solinco X-Natural', 'Multifilament', '#1b1b1f', 'Schwarz', null),
@@ -223,7 +223,7 @@ function seedDB() {
 }
 function demoDB() {
   const db = seedDB(); const s = n => db.strings.find(x => x.name === n).id;
-  db.strings.forEach(x => { if (x.meters == null || x.meters < 50) x.meters = 60; });
+  db.strings.forEach(x => { if (!known(x) || totalM(x) < 50) { x.meters = 60; } }); db.strings.find(x => x.name === 'Yonex Poly Tour Rev').halfs = 1;
   const c1 = { id: uid(), name: 'Beispiel Anna', phone: '0151 00000000', note: 'Spielt Medenspiele, mag es weich' };
   const c2 = { id: uid(), name: 'Beispiel Tom', phone: '0170 00000000', note: '' };
   db.customers.push(c1, c2);
@@ -252,17 +252,60 @@ function usage(j) {
   if (isHybrid(j)) return { [j.mainId]: st.mMain, [j.crossId]: st.mCross };
   return { [j.mainId]: st.mFull };
 }
+// Bestand je Saite: Rolle (s.meters), ganze Sets à 12 m (s.sets), Halbsets à 6 m (s.halfs).
+const SET_M = 12, HALF_M = 6;
+const known = s => !(s.meters == null && s.sets == null && s.halfs == null);
+const totalM = s => (s.meters || 0) + (s.sets || 0) * SET_M + (s.halfs || 0) * HALF_M;
+const recM = r => r == null ? 0 : typeof r === 'number' ? r : (r.meters || 0) + (r.sets || 0) * SET_M + (r.halfs || 0) * HALF_M;
+const plural = (n, a, b) => n + ' ' + (n === 1 ? a : b);
+function stockText(s) {
+  if (!known(s)) return 'Bestand noch nicht eingetragen';
+  const p = [];
+  if (s.meters != null) p.push(s.meters < 0 ? `Rolle 0 m – prüfen (${kg(s.meters)})` : `Rolle ${kg(s.meters)} m`);
+  if (s.sets) p.push(plural(s.sets, 'Set', 'Sets'));
+  if (s.halfs) p.push(plural(s.halfs, 'Halbset', 'Halbsets'));
+  return p.length ? p.join(' · ') : 'leer';
+}
+// Nimmt Saite für eine Besaitung: Vollbesaitung bevorzugt ein Set, Hybrid-Hälfte bevorzugt ein Halbset.
+function takeFrom(s, need, half) {
+  if (!known(s)) return null;
+  const rec = { sets: 0, halfs: 0, meters: 0 };
+  if (!half) {
+    if ((s.sets || 0) > 0) { s.sets--; rec.sets = 1; return rec; }
+    if (s.meters != null && s.meters >= need) { s.meters = r1(s.meters - need); rec.meters = need; return rec; }
+    if ((s.halfs || 0) >= 2) { s.halfs -= 2; rec.halfs = 2; return rec; }
+  } else {
+    if ((s.halfs || 0) > 0) { s.halfs--; rec.halfs = 1; return rec; }
+    if (s.meters != null && s.meters >= need) { s.meters = r1(s.meters - need); rec.meters = need; return rec; }
+    if ((s.sets || 0) > 0) { s.sets--; s.halfs = (s.halfs || 0) + 1; rec.sets = 1; rec.halfs = -1; return rec; } // Set wird geteilt
+  }
+  if (s.meters == null) rec.noReel = true;
+  s.meters = r1((s.meters || 0) - need); rec.meters = need; return rec; // zu wenig: gegen die Rolle buchen
+}
+function giveBack(s, r) {
+  if (typeof r === 'number') { if (s.meters != null) s.meters = r1(s.meters + r); return; }
+  if (r.sets === 1 && r.halfs === -1) { // geteiltes Set: Hälfte zurück, wenn möglich wieder zusammenfügen
+    if ((s.halfs || 0) >= 1) { s.halfs -= 1; s.sets = (s.sets || 0) + 1; } else s.halfs = (s.halfs || 0) + 1;
+  } else {
+    if (r.sets) s.sets = (s.sets || 0) + r.sets;
+    if (r.halfs) s.halfs = (s.halfs || 0) + r.halfs;
+  }
+  if (r.meters) { s.meters = r1((s.meters || 0) + r.meters); if (r.noReel && s.meters === 0) s.meters = null; }
+}
 function applyUsage(j) {
-  for (const [id, m] of Object.entries(j.deducted || {})) { const s = strById(id); if (s && s.meters != null) s.meters = r1(s.meters + m); }
+  for (const [id, r] of Object.entries(j.deducted || {})) { const s = strById(id); if (s) giveBack(s, r); }
   j.deducted = {};
-  if (j.status !== 'angenommen') for (const [id, m] of Object.entries(usage(j))) { const s = strById(id); if (s && s.meters != null) { s.meters = r1(s.meters - m); j.deducted[id] = m; } }
+  if (j.status === 'angenommen' || !j.mainId) return;
+  const st = DB.settings;
+  const parts = isHybrid(j) ? [[j.mainId, st.mMain, true], [j.crossId, st.mCross, true]] : [[j.mainId, st.mFull, false]];
+  for (const [id, m, half] of parts) { const s = strById(id); if (!s) continue; const r = takeFrom(s, m, half); if (r) j.deducted[id] = r; }
 }
 function stock(s) {
-  if (s.meters == null || !s.active) return null;
-  const st = DB.settings;
-  if (s.meters < Math.min(st.mMain, st.mCross)) return 'out';
+  if (!known(s) || !s.active) return null;
+  const st = DB.settings, t = totalM(s);
+  if (t < Math.min(st.mMain, st.mCross)) return 'out';
   const low = s.min != null ? s.min : st.lowBeds * (s.onlyCross ? st.mCross : st.mFull);
-  return s.meters < low ? 'low' : 'ok';
+  return t < low ? 'low' : 'ok';
 }
 const STOCK_LABEL = { ok: ['ok', 'Auf Lager'], low: ['warn', 'Nur noch wenig'], out: ['bad', 'Ausverkauft'] };
 function stockChip(s) { const k = stock(s); if (!k) return '<span class="chip">Bestand fehlt</span>'; const [c, t] = STOCK_LABEL[k]; return `<span class="chip ${c}">${t}</span>`; }
@@ -434,7 +477,7 @@ VIEWS.start = () => {
   ${sec('In Arbeit', open, 'Keine offenen Aufträge. Neuer Auftrag über den gelben Button unten rechts.', `<ul class="rows">${open.map(j => jobRow(j)).join('')}</ul>`)}
   ${sec('Abholbereit', ready, 'Nichts abholbereit.', `<ul class="rows">${ready.map(j => jobRow(j)).join('')}</ul>`)}
   ${unpaid.length ? sec('Abgeholt, nicht bezahlt', unpaid, '', `<ul class="rows">${unpaid.map(j => jobRow(j)).join('')}</ul>`) : ''}
-  ${sec('Saitenbestand knapp', low, 'Alle Saiten ausreichend vorrätig.', `<ul class="rows">${low.map(s => `<li class="row click" data-act="string" data-id="${s.id}"><div><div class="t"><i class="sw" style="--c:${esc(s.color)}"></i>${esc(s.name)}</div><div class="s mono">${kg(s.meters)} m übrig</div></div><div class="acts">${stockChip(s)}<button class="btn sm" data-act="setstock" data-id="${s.id}">Bestand</button><button class="btn sm" data-act="reel" data-id="${s.id}">+ Rolle</button></div></li>`).join('')}</ul>`)}
+  ${sec('Saitenbestand knapp', low, 'Alle Saiten ausreichend vorrätig.', `<ul class="rows">${low.map(s => `<li class="row click" data-act="string" data-id="${s.id}"><div><div class="t"><i class="sw" style="--c:${esc(s.color)}"></i>${esc(s.name)}</div><div class="s mono">${esc(stockText(s))}</div></div><div class="acts">${stockChip(s)}<button class="btn sm" data-act="setstock" data-id="${s.id}">Bestand</button><button class="btn sm" data-act="reel" data-id="${s.id}">+ Nachkauf</button></div></li>`).join('')}</ul>`)}
   ${sec('Fällig zum Neubesaiten', due, 'Kein Schläger ist länger als drei Monate mit Polyester besaitet.', `<ul class="rows">${due.map(d => dueRow(d)).join('')}</ul>`)}`;
 };
 function dueList() {
@@ -499,12 +542,12 @@ VIEWS.saiten = () => {
   return `<div class="head"><h1>Saiten & Bestand</h1><button class="btn p" data-act="newstring">+ Neue Saite</button></div>
   <div class="note small">Beim Status „Fertig“ wird automatisch abgebucht: ${kg(st.mFull)} m pro Vollbesaitung, beim Hybrid ${kg(st.mMain)} m längs und ${kg(st.mCross)} m quer. Die Ampel erscheint so auch auf deiner Website.</div>
   ${groups.map(([g, fn]) => { const list = DB.strings.filter(fn); return `<section class="card"><div class="ch"><h2>${g}</h2><span class="chip">${list.length}</span></div><ul class="rows">${list.map(s => {
-    const k = stock(s); const pct = s.meters == null ? 0 : Math.max(3, Math.min(100, s.meters / (s.reelLength || Math.max(s.meters, 100)) * 100));
-    const beds = s.meters == null ? '' : s.onlyCross ? ` · reicht für ca. ${Math.floor(s.meters / st.mCross)} Hybride` : ` · ca. ${Math.floor(s.meters / st.mFull)} Vollbesaitungen`;
+    const k = stock(s); const tm = totalM(s); const pct = !known(s) ? 0 : Math.max(3, Math.min(100, tm / Math.max(s.reelLength || 0, tm, 100) * 100));
+    const beds = !known(s) ? '' : s.onlyCross ? ` · reicht für ca. ${Math.max(0, Math.floor(tm / st.mCross))} Hybride` : ` · ca. ${Math.max(0, (s.sets || 0) + Math.floor((s.halfs || 0) / 2) + Math.floor(Math.max(0, s.meters || 0) / st.mFull))} Vollbesaitungen`;
     const cost = s.reelPrice && s.reelLength ? ` · ${eur(s.reelPrice / s.reelLength * (s.onlyCross ? st.mCross : st.mFull))} Saitenkosten pro ${s.onlyCross ? 'Hybrid-Hälfte' : 'Besaitung'}` : '';
     return `<li class="row click${s.active ? '' : ' muted'}" data-act="string" data-id="${s.id}"><div><div class="t"><i class="sw" style="--c:${esc(s.color)}"></i>${esc(s.name)}${s.onlyCross ? ' <span class="chip">Nur Quersaite</span>' : ''}${s.active ? '' : ' <span class="chip">Nicht im Angebot</span>'}</div>
-      <div class="s"><span class="mono">${s.meters == null ? 'Bestand noch nicht eingetragen' : s.meters < 0 ? '0 m – Bestand prüfen (' + kg(s.meters) + ')' : kg(s.meters) + ' m'}</span>${esc(beds)}${esc(cost)}</div>${s.meters == null ? '' : `<div class="meter ${k || ''}"><i style="width:${pct}%"></i></div>`}</div>
-      <div class="acts">${stockChip(s)}<button class="btn sm" data-act="setstock" data-id="${s.id}">Bestand</button><button class="btn sm" data-act="reel" data-id="${s.id}">+ Rolle</button></div></li>`; }).join('')}</ul></section>`; }).join('')}`;
+      <div class="s"><span class="mono">${esc(stockText(s))}</span>${esc(beds)}${esc(cost)}</div>${!known(s) ? '' : `<div class="meter ${k || ''}"><i style="width:${pct}%"></i></div>`}</div>
+      <div class="acts">${stockChip(s)}<button class="btn sm" data-act="setstock" data-id="${s.id}">Bestand</button><button class="btn sm" data-act="reel" data-id="${s.id}">+ Nachkauf</button></div></li>`; }).join('')}</ul></section>`; }).join('')}`;
 };
 
 VIEWS.finanzen = () => {
@@ -578,7 +621,7 @@ function openDlg(html, onSubmit) {
 }
 const opt = (v, t, sel) => `<option value="${esc(v)}" ${v === sel ? 'selected' : ''}>${esc(t)}</option>`;
 function stringOptions(sel, crossOnly) {
-  return DB.strings.filter(s => (s.active || s.id === sel) && (crossOnly || !s.onlyCross || s.id === sel)).map(s => opt(s.id, s.name + (s.meters != null ? ` (${kg(s.meters)} m)` : ''), sel)).join('');
+  return DB.strings.filter(s => (s.active || s.id === sel) && (crossOnly || !s.onlyCross || s.id === sel)).map(s => opt(s.id, s.name + (known(s) ? ` (${stockText(s)})` : ''), sel)).join('');
 }
 
 function jobDialog(job, preset = {}) {
@@ -630,8 +673,8 @@ function jobDialog(job, preset = {}) {
   function checkStock() {
     const m = strById($('#j-main').value), hy = $('#j-hyb').checked, c = hy ? strById($('#j-cross').value) : null, st = DB.settings;
     const need = []; if (m) need.push([m, hy ? st.mMain : st.mFull]); if (c) need.push([c, st.mCross]);
-    const short = need.filter(([s, n]) => s.meters != null && s.meters + ((j.deducted || {})[s.id] || 0) < n);
-    $('#j-stock').innerHTML = short.length ? `<div class="note bad">Zu wenig Saite: ${short.map(([s, n]) => `${esc(s.name)} hat ${kg(s.meters)} m, gebraucht ${kg(n)} m`).join('; ')}</div>` : '';
+    const short = need.filter(([s, n]) => known(s) && totalM(s) + recM((j.deducted || {})[s.id]) < n);
+    $('#j-stock').innerHTML = short.length ? `<div class="note bad">Zu wenig Saite: ${short.map(([s, n]) => `${esc(s.name)} hat nur ${esc(stockText(s))}, gebraucht ${kg(n)} m`).join('; ')}</div>` : '';
   }
   cust.onchange = fillRacks; rack.onchange = fillRackFields;
   $('#j-hyb').onchange = () => { $('#j-crossf').hidden = !$('#j-hyb').checked; checkStock(); };
@@ -725,28 +768,33 @@ function stringDialog(s) {
     <label class="f"><span>Name (genau wie auf der Website)</span><input id="s-name" value="${esc(s.name)}" required></label>
     <div class="grid2"><label class="f"><span>Art</span><select id="s-art">${opt('Polyester', 'Polyester', s.art)}${opt('Multifilament', 'Multifilament', s.art)}${opt('Kunstdarm', 'Kunstdarm', s.art)}${opt('Naturdarm', 'Naturdarm', s.art)}</select></label>
     <label class="f"><span>Farbe</span><div style="display:flex;gap:.5rem"><input type="color" id="s-color" value="${esc(s.color)}" style="width:3.2rem;padding:.2rem" aria-label="Farbe wählen"><input id="s-cname" value="${esc(s.colorName)}" placeholder="z. B. Pink" aria-label="Farbname"></div></label></div>
-    <div class="grid2"><label class="f"><span>Bestand jetzt (m)</span><input id="s-m" inputmode="decimal" value="${s.meters == null ? '' : kg(s.meters)}" placeholder="leer = unbekannt"></label><label class="f"><span>Warnen unter (m)</span><input id="s-min" inputmode="decimal" value="${s.min == null ? '' : kg(s.min)}" placeholder="automatisch"></label></div>
+    <div class="grid2"><label class="f"><span>Warnen unter (m)</span><input id="s-min" inputmode="decimal" value="${s.min == null ? '' : kg(s.min)}" placeholder="automatisch"></label></div>
     <div class="grid2"><label class="f"><span>Rollenlänge (m)</span><input id="s-rl" inputmode="decimal" value="${s.reelLength == null ? '' : kg(s.reelLength)}" placeholder="z. B. 200"></label><label class="f"><span>Rollenpreis (€)</span><input id="s-rp" inputmode="decimal" value="${s.reelPrice == null ? '' : kg(s.reelPrice)}"></label></div>
     <label class="chk"><input type="checkbox" id="s-oc" ${s.onlyCross ? 'checked' : ''}> Nur als Quersaite im Hybrid</label>
     <label class="chk"><input type="checkbox" id="s-act" ${s.active ? 'checked' : ''}> Im Angebot</label></div>
     <div class="df"><div class="r"><button type="button" class="btn" data-close>Abbrechen</button><button class="btn p" type="submit">Speichern</button></div></div></form>`, () => {
-    Object.assign(s, { name: $('#s-name').value.trim(), art: $('#s-art').value, color: $('#s-color').value, colorName: $('#s-cname').value.trim(), meters: num($('#s-m').value), min: num($('#s-min').value), reelLength: num($('#s-rl').value), reelPrice: num($('#s-rp').value), onlyCross: $('#s-oc').checked, active: $('#s-act').checked });
+    Object.assign(s, { name: $('#s-name').value.trim(), art: $('#s-art').value, color: $('#s-color').value, colorName: $('#s-cname').value.trim(), min: num($('#s-min').value), reelLength: num($('#s-rl').value), reelPrice: num($('#s-rp').value), onlyCross: $('#s-oc').checked, active: $('#s-act').checked });
     if (isNew) DB.strings.push(s); dlg.close(); commit('Saite gespeichert');
   });
 }
 function reelDialog(s) {
-  openDlg(`<form><div class="dh"><h2>Rolle nachgekauft</h2><button type="button" class="x" data-close aria-label="Schließen">×</button></div><div class="db">
-    <div class="note"><i class="sw" style="--c:${esc(s.color)}"></i><b>${esc(s.name)}</b> · aktuell ${s.meters == null ? 'unbekannt' : kg(s.meters) + ' m'}</div>
-    <div class="grid2"><label class="f"><span>Meter dazu</span><input id="n-m" inputmode="decimal" value="${kg(s.reelLength || 200)}" required></label><label class="f"><span>Preis (€)</span><input id="n-p" inputmode="decimal" value="${s.reelPrice == null ? '' : kg(s.reelPrice)}"></label></div>
+  openDlg(`<form><div class="dh"><h2>Nachgekauft</h2><button type="button" class="x" data-close aria-label="Schließen">×</button></div><div class="db">
+    <div class="note"><i class="sw" style="--c:${esc(s.color)}"></i><b>${esc(s.name)}</b> · aktuell ${esc(stockText(s))}</div>
+    <div class="seg">${[['reel', 'Rolle'], ['set', 'Sets (12 m)'], ['half', 'Halbsets (6 m)']].map(([v, t], i) => `<label><input type="radio" name="n-type" value="${v}" ${i === 0 ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div>
+    <div class="grid2"><label class="f"><span id="n-ml">Meter dazu</span><input id="n-m" inputmode="decimal" value="${kg(s.reelLength || 200)}" required></label><label class="f"><span>Preis (€)</span><input id="n-p" inputmode="decimal" value="${s.reelPrice == null ? '' : kg(s.reelPrice)}"></label></div>
     <label class="f"><span>Gekauft am (auch früheres Datum möglich)</span><input type="date" id="n-d" value="${iso()}"></label>
     <p class="small muted" style="margin:0">Nur den Rest einer alten Rolle erfassen? Dann besser den Button „Bestand“ nehmen.</p>
     <label class="chk"><input type="checkbox" id="n-exp" checked> Als Ausgabe eintragen</label></div>
     <div class="df"><div class="r"><button type="button" class="btn" data-close>Abbrechen</button><button class="btn p" type="submit">Hinzufügen</button></div></div></form>`, () => {
     const m = num($('#n-m').value), p = num($('#n-p').value); if (!m) return;
-    s.meters = r1((s.meters || 0) + m); s.reelLength = s.reelLength || m; if (p != null) s.reelPrice = p;
-    if ($('#n-exp').checked && p) DB.expenses.push({ id: uid(), date: $('#n-d').value || iso(), desc: `Saitenrolle ${s.name} (${kg(m)} m)`, cat: 'Saiten', amount: p, receipt: true });
-    dlg.close(); commit('Rolle hinzugefügt'); toast(`${kg(m)} m ${s.name} hinzugefügt`);
+    const type = ($('input[name="n-type"]:checked') || {}).value || 'reel'; let what;
+    if (type === 'reel') { s.meters = r1((s.meters || 0) + m); s.reelLength = s.reelLength || m; if (p != null) s.reelPrice = p; what = `Saitenrolle ${s.name} (${kg(m)} m)`; }
+    else if (type === 'set') { const n = Math.round(m); s.sets = (s.sets || 0) + n; what = `${s.name}: ${plural(n, 'Set', 'Sets')}`; }
+    else { const n = Math.round(m); s.halfs = (s.halfs || 0) + n; what = `${s.name}: ${plural(n, 'Halbset', 'Halbsets')}`; }
+    if ($('#n-exp').checked && p) DB.expenses.push({ id: uid(), date: $('#n-d').value || iso(), desc: what, cat: 'Saiten', amount: p, receipt: true });
+    dlg.close(); commit('Saite nachgekauft'); toast(what + ' hinzugefügt');
   });
+  $$('input[name="n-type"]').forEach(r => r.onchange = () => { const reel = r.value === 'reel'; $('#n-ml').textContent = reel ? 'Meter dazu' : 'Anzahl'; $('#n-m').value = reel ? kg(s.reelLength || 200) : '1'; });
 }
 // Turns a pasted WhatsApp request (from the form on the website) into a prefilled job.
 function parseRequest(t) {
@@ -770,21 +818,27 @@ function pasteDialog() {
   $('#p-text').focus();
 }
 function stockDialog(s) {
+  const v = x => x == null ? '' : kg(x);
   openDlg(`<form><div class="dh"><h2>Bestand eintragen</h2><button type="button" class="x" data-close aria-label="Schließen">×</button></div><div class="db">
-    <div class="note"><i class="sw" style="--c:${esc(s.color)}"></i><b>${esc(s.name)}</b> · bisher ${s.meters == null ? 'nicht eingetragen' : kg(s.meters) + ' m'}</div>
-    <div class="grid2"><label class="f"><span>Bestand jetzt (m)</span><input id="b-m" inputmode="decimal" value="${s.meters == null ? '' : kg(s.meters)}" placeholder="z. B. 145"></label>
-    <label class="f"><span>oder Anzahl Sets (je 12 m)</span><input id="b-sets" inputmode="decimal" placeholder="z. B. 2"></label></div>
-    <p class="small muted" style="margin:0">Für eine angebrochene Rolle reicht eine Schätzung. Ab jetzt bucht die Verwaltung jede fertige Besaitung automatisch ab.</p>
-    <label class="chk"><input type="checkbox" id="b-none" ${s.meters == null ? 'checked' : ''}> Bestand unbekannt (keine Ampel auf der Website)</label></div>
+    <div class="note"><i class="sw" style="--c:${esc(s.color)}"></i><b>${esc(s.name)}</b> · bisher ${esc(stockText(s))}</div>
+    <label class="f"><span>Rolle: Restmeter (leer = keine Rolle)</span><input id="b-m" inputmode="decimal" value="${v(s.meters)}" placeholder="z. B. 145"></label>
+    <div class="grid2"><label class="f"><span>Sets (je 12 m)</span><input id="b-sets" inputmode="numeric" value="${v(s.sets)}" placeholder="0"></label>
+    <label class="f"><span>Halbsets (je 6 m)</span><input id="b-halfs" inputmode="numeric" value="${v(s.halfs)}" placeholder="0"></label></div>
+    <p class="small muted" style="margin:0">Beides ist möglich. Beim Abbuchen nimmt die Verwaltung für eine Vollbesaitung zuerst ein Set, für eine Hybrid-Hälfte zuerst ein Halbset, sonst die Rolle. Ein Set wird für Hybride automatisch halbiert.</p>
+    <p id="b-sum" class="small mono" style="margin:0"></p>
+    <label class="chk"><input type="checkbox" id="b-none" ${known(s) ? '' : 'checked'}> Bestand unbekannt (keine Ampel auf der Website)</label></div>
     <div class="df"><div class="r"><button type="button" class="btn" data-close>Abbrechen</button><button class="btn p" type="submit">Speichern</button></div></div></form>`, () => {
-    if ($('#b-none').checked) s.meters = null;
-    else { const sets = num($('#b-sets').value); const m = sets != null ? r1(sets * 12) : num($('#b-m').value); if (m == null) { $('#b-m').focus(); return; } s.meters = m; }
-    dlg.close(); commit('Bestand eingetragen'); toast(s.meters == null ? `${s.name}: Bestand unbekannt` : `${s.name}: ${kg(s.meters)} m`);
+    if ($('#b-none').checked) { s.meters = null; s.sets = null; s.halfs = null; }
+    else {
+      const m = num($('#b-m').value), st = num($('#b-sets').value), h = num($('#b-halfs').value);
+      if (m == null && st == null && h == null) { $('#b-m').focus(); return; }
+      s.meters = m; s.sets = st == null ? 0 : Math.round(st); s.halfs = h == null ? 0 : Math.round(h);
+    }
+    dlg.close(); commit('Bestand eingetragen'); toast(`${s.name}: ${stockText(s)}`);
   });
-  const uncheck = () => { $('#b-none').checked = false; };
-  $('#b-m').oninput = uncheck;
-  $('#b-sets').oninput = () => { uncheck(); const v = num($('#b-sets').value); if (v != null) $('#b-m').value = kg(r1(v * 12)); };
-  $('#b-m').focus();
+  const upd = () => { const t = (num($('#b-m').value) || 0) + (num($('#b-sets').value) || 0) * SET_M + (num($('#b-halfs').value) || 0) * HALF_M; $('#b-sum').textContent = `Zusammen: ${kg(r1(t))} m`; };
+  ['#b-m', '#b-sets', '#b-halfs'].forEach(id => $(id).oninput = () => { $('#b-none').checked = false; upd(); });
+  upd(); $('#b-m').focus();
 }
 function expDialog(e) {
   const isNew = !e; e = e || { id: uid(), date: iso(), desc: '', cat: 'Saiten', amount: null, receipt: true };
