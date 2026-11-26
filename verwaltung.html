@@ -320,7 +320,12 @@ async function gh(method, repo, path, body) {
   const url = `https://api.github.com/repos/${encodeURIComponent(CFG.owner)}/${encodeURIComponent(repo)}${path}`;
   const r = await fetch(url, { method, cache: 'no-store', headers: { 'Accept': 'application/vnd.github+json', 'Authorization': 'Bearer ' + CFG.token, 'X-GitHub-Api-Version': '2022-11-28', ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
   if (r.status === 404 && method === 'GET') return null;
-  if (!r.ok) { const e = new Error(r.status === 401 ? 'Zugangsschlüssel ungültig oder abgelaufen' : r.status === 403 ? 'Keine Berechtigung (Schlüssel braucht „Contents: Read and write“)' : r.status === 409 || r.status === 422 ? 'conflict' : 'GitHub-Fehler ' + r.status); e.status = r.status; throw e; }
+  if (!r.ok) {
+    let gm = ''; try { gm = (await r.json()).message || ''; } catch (x) { }
+    const where = `${method === 'GET' ? 'Lesen' : 'Schreiben'} in „${repo}“`;
+    const e = new Error(r.status === 401 ? 'Zugangsschlüssel ungültig oder abgelaufen' : r.status === 403 ? `Keine Berechtigung beim ${where}. Der Schlüssel braucht für beide Repositories „Contents: Read and write“. (GitHub: ${gm})` : r.status === 409 || r.status === 422 ? 'conflict' : `GitHub-Fehler ${r.status} beim ${where} (${gm})`);
+    e.status = r.status; throw e;
+  }
   return r.json();
 }
 async function ghGet(repo, path) {
