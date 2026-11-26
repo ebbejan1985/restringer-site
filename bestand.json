@@ -251,25 +251,6 @@
    "status": "ok"
   },
   {
-   "name": "Solinco Hyper-G Soft",
-   "art": "Polyester",
-   "color": "#96d35f",
-   "colorName": "Grün",
-   "profile": "",
-   "desc": "",
-   "chips": [],
-   "pos": 50,
-   "firm": 50,
-   "spin": 50,
-   "onlyCross": false,
-   "hset": false,
-   "a": "",
-   "b": "",
-   "ac": "",
-   "bc": "",
-   "status": null
-  },
-  {
    "name": "MSV Co Ultra",
    "art": "Polyester",
    "color": "#00364a",
@@ -360,6 +341,29 @@
    "ac": "",
    "bc": "",
    "status": "ok"
+  },
+  {
+   "name": "Solinco Hyper-G Soft",
+   "art": "Polyester",
+   "color": "#96d35f",
+   "colorName": "Grün",
+   "profile": "4-eckig",
+   "desc": "Die weichere Variante der Hyper-G: kantig, mit sehr viel Spin und Kontrolle, dazu mehr Gefühl und Komfort als die meisten Kontroll-Polys. Bringt wenig eigene Power und verliert etwas schneller Spannung als die Confidential.",
+   "chips": [
+    "Spin",
+    "Kontrolle",
+    "Gefühl"
+   ],
+   "pos": 80,
+   "firm": 55,
+   "spin": 88,
+   "onlyCross": false,
+   "hset": false,
+   "a": "",
+   "b": "",
+   "ac": "",
+   "bc": "",
+   "status": null
   },
   {
    "name": "Toroline Caviar",
