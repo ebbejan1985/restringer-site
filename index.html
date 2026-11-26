@@ -496,9 +496,10 @@ fetch('bestand.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r
   var col = function (c) { return /^#[0-9a-f]{3,8}$/i.test(c || '') ? c : '#888888'; };
   var em = function (it) { return it.status && L[it.status] ? '<em class="stock ' + it.status + '">' + L[it.status] + '</em>' : ''; };
   var chips = function (it) { return (it.chips || []).map(function (c, i) { return '<span class="chip' + (i === 0 ? ' k' : '') + '">' + esc(c) + '</span>'; }).join(''); };
-  var sub = function (it) { return [it.art === 'Polyester' ? 'Co-Poly' : it.art, it.profile, it.colorName].filter(Boolean).join(' · '); };
+  var sub = function (it) { return [it.art === 'Polyester' ? 'Co-Poly' : it.art, it.profile, (it.colors || [{ n: it.colorName }]).map(function (c) { return c.n; }).filter(Boolean).join(' / ')].filter(Boolean).join(' · '); };
+  var dots = function (it) { return (it.colors || [{ c: it.color }]).map(function (c) { return '<i class="sw" style="--c:' + col(c.c) + '"></i>'; }).join(''); };
   function row(it, scale) {
-    return '<div class="str" id="' + slug(it.name) + '"><div class="nm"><h4><i class="sw" style="--c:' + col(it.color) + '"></i>' + esc(it.name) + em(it) + '<span>' + esc(sub(it)) + '</span></h4>' +
+    return '<div class="str" id="' + slug(it.name) + '"><div class="nm"><h4>' + dots(it) + esc(it.name) + em(it) + '<span>' + esc(sub(it)) + '</span></h4>' +
       (scale ? '<span class="pos" style="--p:' + Math.max(0, Math.min(100, +it.pos || 0)) + '%" title="Einordnung zwischen Power und Kontrolle"></span>' : '') +
       '</div><p>' + esc(it.desc) + '</p><div class="chips">' + chips(it) + '</div></div>';
   }
@@ -506,7 +507,14 @@ fetch('bestand.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r
     return '<div class="str hsetrow" id="' + slug(it.name) + '"><div class="nm"><h4><i class="sw" style="--c:' + col(it.ac) + '"></i>' + esc(it.name) + em(it) + '<span>' + esc(it.a) + ' + ' + esc(it.b) + ' · längs/quer tauschbar</span></h4>' +
       '<span class="pair2"><i class="sw" style="--c:' + col(it.ac) + '"></i><i class="sw" style="--c:' + col(it.bc) + '"></i></span></div><p>' + esc(it.desc) + '</p><div class="chips">' + chips(it) + '</div></div>';
   }
-  var cat = d.catalog;
+  // gleiche Saite in mehreren Farben zu einer Zeile zusammenführen
+  var rank = { ok: 3, low: 2, out: 1 }, byName = {}, cat = [];
+  d.catalog.forEach(function (x) {
+    var m = byName[x.name];
+    if (!m) { m = byName[x.name] = Object.assign({}, x, { colors: [] }); cat.push(m); }
+    m.colors.push({ c: x.color, n: x.colorName });
+    if ((rank[x.status] || 0) > (rank[m.status] || 0)) m.status = x.status;
+  });
   var poly = cat.filter(function (x) { return x.art === 'Polyester' && !x.onlyCross && !x.hset; });
   var other = cat.filter(function (x) { return x.art !== 'Polyester' && !x.onlyCross && !x.hset; });
   var sets = cat.filter(function (x) { return x.hset; });
@@ -739,7 +747,7 @@ document.querySelectorAll('.copy').forEach(function (b) {
   function fill(sel, list, first) { var v = sel.value; sel.innerHTML = '<option value="">' + first + '</option>' + list.map(function (n) { return '<option>' + n.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</option>'; }).join(''); if (list.indexOf(v) > -1) sel.value = v; }
   window.reqFillStrings = function () {
     names = []; crossOnly = []; setNames = [];
-    document.querySelectorAll('.str h4').forEach(function (h) { var n = h.childNodes[1] && h.childNodes[1].textContent.trim(); if (n && names.indexOf(n) < 0) { names.push(n); if (h.closest('.xfeat')) crossOnly.push(n); if (h.closest('.hsetrow')) setNames.push(n); } });
+    document.querySelectorAll('.str h4').forEach(function (h) { var tn = Array.prototype.filter.call(h.childNodes, function (x) { return x.nodeType === 3; })[0]; var n = tn && tn.textContent.trim(); if (n && names.indexOf(n) < 0) { names.push(n); if (h.closest('.xfeat')) crossOnly.push(n); if (h.closest('.hsetrow')) setNames.push(n); } });
     fill($('r-main'), names.filter(function (n) { return crossOnly.indexOf(n) < 0; }), 'Bitte beraten');
     fill($('r-cross'), crossOnly.concat(names.filter(function (n) { return crossOnly.indexOf(n) < 0 && setNames.indexOf(n) < 0; })), 'Bitte beraten');
   };
